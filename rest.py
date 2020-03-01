@@ -2,14 +2,14 @@ import requests
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
-
+'''
 import block
 import node
 import blockchain
 import wallet
 import transaction
 import wallet
-
+'''
 
 ### JUST A BASIC EXAMPLE OF A REST API WITH FLASK
 
@@ -17,12 +17,14 @@ import wallet
 
 app = Flask(__name__)
 CORS(app)
-blockchain = Blockchain()
+#blockchain = Blockchain()
 
 
 #.......................................................................................
 
-
+@app.route('/test')
+def test():
+    return request.host, 200
 
 # get all transactions in the blockchain
 
@@ -45,4 +47,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     port = args.port
 
-    app.run(host='127.0.0.1', port=port)
+    app.run(host='0.0.0.0', port=port)
