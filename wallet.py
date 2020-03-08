@@ -23,9 +23,18 @@ class wallet:
 		self.public_key = self.private_key.publickey()
 		self.address = get('https://api.ipify.org').text
 		self.transactions = []
+		self.balance = 0  # Transactions and balance may be inconsistent (lock)
 
-	def balance(self):
-		pass
+	def get_sufficient_utxos(self, amount):
+		if amount > self.balance:
+			return None
+		utxos = []
+		s = 0
+		while amount > s:
+			utxos.append(self.transactions.pop())
+			s += utxos[-1].amount
+		self.balance -= s
+		return utxos, s - amount
 
 
 my_wallet = wallet()

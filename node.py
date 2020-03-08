@@ -36,9 +36,9 @@ class node:
 
 
 
-	def validdate_transaction():
+	def validate_transaction():
 		#use of signature and NBCs balance
-
+		
 
 	def add_transaction_to_block():
 		#if enough transactions  mine
