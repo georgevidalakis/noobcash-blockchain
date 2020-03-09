@@ -14,9 +14,7 @@ from uuid import uuid4
 
 from requests import get
 
-
-
-class wallet:
+class Wallet:
 
 	def __init__(self):
 		self.private_key = RSA.generate(2048)
@@ -28,13 +26,14 @@ class wallet:
 	def get_sufficient_utxos(self, amount):
 		if amount > self.balance:
 			return None
-		utxos = []
+		utxo_ids = []
 		s = 0
 		while amount > s:
-			utxos.append(self.transactions.pop())
-			s += utxos[-1].amount
+			utxo = self.transactions.pop()
+			utxo_ids.append(utxo.transaction_id)
+			s += utxo.amount
 		self.balance -= s
-		return utxos, s - amount
+		return utxo_ids, s - amount
 
 
 my_wallet = wallet()

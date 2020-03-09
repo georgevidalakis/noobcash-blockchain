@@ -1,12 +1,20 @@
-import block
-import wallet
+from block import Block
+from wallet import Wallet
+from transaction import Transaction
+from blockchain import Blockchain
 
-class node:
-	def __init__():
-		self.NBC=100
-		##set
+class Node:
+	def __init__(self, is_bootstrap, n):
+		self.NBC = 0
 
-		#self.chain
+		if is_bootstrap:
+			my_id, self.chain = 0, self.init_bootstrap_blockchain(n)
+		else:
+			while True:
+				my_id, self.chain = self.first_contact_data()
+				if self.valid_chain(blockchain):
+					break
+			
 		#self.current_id_count
 		#self.NBCs
 		#self.wallet
@@ -14,7 +22,12 @@ class node:
 		#slef.ring[]   #here we store information for every node, as its id, its address (ip:port) its public key and its balance 
 
 
-
+	def init_bootstrap_blockchain(self, n):
+		genesis_transaction = Transaction(self.wallet.public_key, 100 * n, None)
+		return Blockchain(None, genesis_transaction)
+	
+	def first_contact_data(self):
+		pass
 
 	def create_new_block():
 
@@ -31,10 +44,6 @@ class node:
 
 
 	def broadcast_transaction():
-
-
-
-
 
 	def validate_transaction():
 		#use of signature and NBCs balance
@@ -62,7 +71,7 @@ class node:
 	#concencus functions
 
 	def valid_chain(self, chain):
-		#check for the longer chain accroose all nodes
+		#check for the longer chain across all nodes
 
 
 	def resolve_conflicts(self):
