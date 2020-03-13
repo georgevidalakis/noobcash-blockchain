@@ -21,6 +21,10 @@ class Block:
 
 		self.timestamp = time.time()
 	
+	@classmethod
+	def from_dict(self, block : dict):
+		self.__dict__.update(block)
+	
 	def message(self):
 		return json.dumps({
 			'index': self.index,
@@ -30,7 +34,7 @@ class Block:
 		})
 
 	def my_hash(self):
-		return SHA.new(data=self.message().encode('utf-8'))
+		return SHA.new(data=self.message().encode('utf-8')).hexdigest()
 
 	def add_transaction(self, transaction):
 		# add a transaction to the block

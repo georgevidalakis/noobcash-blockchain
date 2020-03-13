@@ -9,7 +9,7 @@ from Crypto.Signature import PKCS1_v1_5
 import hashlib
 import json
 from time import time
-from urllib.parse import urlparse
+from urllib2.parse import urlparse
 from uuid import uuid4
 
 from requests import get
@@ -34,6 +34,3 @@ class Wallet:
 			s += utxo.amount
 		self.balance -= s
 		return utxo_ids, s - amount
-
-
-my_wallet = wallet()

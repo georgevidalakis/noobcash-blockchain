@@ -44,6 +44,21 @@ class Transaction:
         #self.Signature
         self.Signature = self.sign_transaction(my_wallet.private_key)
     
+    @classmethod
+    def from_dict(self, transaction : dict):
+        transaction['sender_address'] = RSA.construct((transaction['sender_address']['n'],
+                                                       transaction['sender_address']['e']))
+
+        transaction['receiver_address'] = RSA.construct((transaction['receiver_address']['n'],
+                                                         transaction['receiver_address']['e']))
+
+        transaction['transaction_outputs'] = [
+            TransactionOutput.from_dict(transaction_output) \
+                for transaction_output in transaction['transaction_outputs']
+        ]
+
+        self.__dict__.update(transaction)
+    
     def message(self):
         return json.dumps({
             'sender_address': self.sender_address,
