@@ -1,6 +1,10 @@
 import requests
 from flask import Flask, jsonify, request, render_template
-from flask_cors import CORS
+#from flask_cors import CORS
+
+import time
+
+from test import Test
 
 '''
 import block
@@ -16,15 +20,29 @@ import wallet
 
 
 app = Flask(__name__)
-CORS(app)
+#CORS(app)
 #blockchain = Blockchain()
+loopy = Test()
 
 
 #.......................................................................................
 
-@app.route('/test')
-def test():
+@app.route('/test1')
+def test1():
+    loopy.inc1()
+
     return request.host, 200
+
+@app.route('/test2')
+def test2():
+    loopy.inc2()
+
+    return request.host, 200
+
+@app.route('/trial')
+def trial():
+    
+    return str(loopy.a), 200
 
 # get all transactions in the blockchain
 

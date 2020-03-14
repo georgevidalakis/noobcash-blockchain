@@ -1,4 +1,4 @@
-import transaction
+from transaction import Transaction
 
 import time
 import json
@@ -36,7 +36,10 @@ class Block:
 	def my_hash(self):
 		return SHA.new(data=self.message().encode('utf-8')).hexdigest()
 
-	def add_transaction(self, transaction):
+	def __len__(self):
+		return len(self.list_of_transactions)
+
+	def add_transaction(self, transaction : Transaction):
 		# add a transaction to the block
 		self.list_of_transactions.append(transaction)
 		

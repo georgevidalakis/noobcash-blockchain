@@ -3,12 +3,15 @@ from wallet import Wallet
 from transaction import Transaction
 from blockchain import Blockchain
 
+import torch
+import torch.nn as nn
 import json
+import queue
 import urllib3
 import jsonpickle
 
 class Node:
-	def __init__(self, is_bootstrap : bool, n : int, bootstrap_address : str):
+	def __init__(self, is_bootstrap : bool, n : int, bootstrap_address : str, capacity : int):
 		self.NBC = 0
 
 		if is_bootstrap:
@@ -23,7 +26,13 @@ class Node:
 		
 		self.wallet = self.generate_wallet()
 
-		self.ring = []  # Here we store information for every node, as its id, its address (ip:port) its public key and its balance 
+		self.ring = []  # Here we store information for every node, as its id, its address (ip:port) its public key and its balance
+
+		# self.transaction_queue = []
+
+		self.capacity = capacity
+
+		self.pending_block = None
 
 
 	def init_bootstrap_blockchain(self, n):
@@ -43,7 +52,12 @@ class Node:
 		return response['id'], blockchain
 
 	def create_new_block(self):
-		pass
+		self.pending_block = Block(self.chain)
+		# limit = min(self.capacity, len(self.transaction_queue))
+		# for transaction in self.transaction_queue[:limit]:
+		# 	self.add_transaction_to_block(transaction)
+		# self.transaction_queue = self.transaction_queue[limit:]
+				
 
 	def generate_wallet(self):
 		#create a wallet for this node, with a public key and a private key
@@ -68,10 +82,10 @@ class Node:
 		pass
 		
 
-	def add_transaction_to_block(self):
-		#if enough transactions  mine
-		pass
-
+	def add_transaction_to_block(self, transaction : Transaction):
+		# If enough transactions mine
+		if self.pending_block.add_transaction(transaction) == self.capacity:
+			self.mine_block()
 
 
 	def mine_block(self):
@@ -85,7 +99,7 @@ class Node:
 
 		
 
-	def valid_proof(self, difficulty=MINING_DIFFICULTY):
+	def valid_proof(self, difficulty):
 		pass
 	
 	#concencus functions
@@ -101,3 +115,6 @@ class Node:
 
 
 
+'''
+
+'''
