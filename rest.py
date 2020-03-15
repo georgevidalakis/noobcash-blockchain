@@ -27,15 +27,9 @@ loopy = Test()
 
 #.......................................................................................
 
-@app.route('/test1')
-def test1():
-    loopy.inc1()
-
-    return request.host, 200
-
-@app.route('/test2')
-def test2():
-    loopy.inc2()
+@app.route('/test')
+def test():
+    loopy.inc(True)
 
     return request.host, 200
 

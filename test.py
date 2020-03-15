@@ -11,14 +11,10 @@ class Test:
         self.a = 0
     
     @wrapt.synchronized(lock)
-    def inc1(self):
-        for _ in range(int(5e8)):
-            self.a += 1
-    
-    @wrapt.synchronized(lock)
-    def inc2(self):
-        for _ in range(int(5e8)):
-            self.a += 1
+    def inc(self, recurse : bool):
+        self.a += 1
+        if recurse:
+            self.inc(False)
 
     def show(self):
         print(self.a)

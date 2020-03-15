@@ -21,9 +21,9 @@ class Block:
 
 		self.timestamp = time.time()
 	
-	@classmethod
+	'''@classmethod
 	def from_dict(self, block : dict):
-		self.__dict__.update(block)
+		self.__dict__.update(block)'''
 	
 	def message(self):
 		return json.dumps({

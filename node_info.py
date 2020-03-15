@@ -1,4 +1,4 @@
-import transaction_output
+import wrapt
 
 class NodeInfo:
 
@@ -15,7 +15,6 @@ class NodeInfo:
         del self.utxo_dict[utxo_id]
     
     def filtered_sum(self, utxo_ids):
-        # return sum([self.utxo_dict[utxo_id].amount for utxo_id in utxo_ids])
         s = 0
         for utxo_id in utxo_ids:
             s += self.utxo_dict[utxo_id].amount

@@ -16,7 +16,7 @@ from transaction_output import TransactionOutput
 
 class Transaction:
 
-    def __init__(self, recipient_address, value, my_wallet):
+    def __init__(self, recipient_address, value : int, my_wallet):
         if my_wallet is None:
             self.sender_address = 0
             #self.transaction_inputs: λίστα από Transaction Input
@@ -44,8 +44,8 @@ class Transaction:
         #self.Signature
         self.Signature = self.sign_transaction(my_wallet.private_key)
     
-    @classmethod
-    def from_dict(self, transaction : dict):
+    '''@classmethod
+    def from_dict(cls, transaction : dict):
         transaction['sender_address'] = RSA.construct((transaction['sender_address']['n'],
                                                        transaction['sender_address']['e']))
 
@@ -57,7 +57,7 @@ class Transaction:
                 for transaction_output in transaction['transaction_outputs']
         ]
 
-        self.__dict__.update(transaction)
+        self.__dict__.update(transaction)'''
     
     def message(self):
         return json.dumps({

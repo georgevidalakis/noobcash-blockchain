@@ -3,15 +3,15 @@ from wallet import Wallet
 from transaction import Transaction
 from blockchain import Blockchain
 
-import torch
-import torch.nn as nn
+import wrapt
 import json
 import queue
 import urllib3
 import jsonpickle
+import numpy as np
 
 class Node:
-	def __init__(self, is_bootstrap : bool, n : int, bootstrap_address : str, capacity : int):
+	def __init__(self, is_bootstrap : bool, n : int, bootstrap_address : str, capacity : int, difficulty : int):
 		self.NBC = 0
 
 		if is_bootstrap:
@@ -26,11 +26,13 @@ class Node:
 		
 		self.wallet = self.generate_wallet()
 
-		self.ring = []  # Here we store information for every node, as its id, its address (ip:port) its public key and its balance
+		self.ring = dict()  # Here we store information for every node, as its id, its address (ip:port) its public key and its balance
 
-		# self.transaction_queue = []
+		self.transaction_queue = queue.Queue()
 
 		self.capacity = capacity
+
+		self.difficulty = difficulty
 
 		self.pending_block = None
 
@@ -53,10 +55,8 @@ class Node:
 
 	def create_new_block(self):
 		self.pending_block = Block(self.chain)
-		# limit = min(self.capacity, len(self.transaction_queue))
-		# for transaction in self.transaction_queue[:limit]:
-		# 	self.add_transaction_to_block(transaction)
-		# self.transaction_queue = self.transaction_queue[limit:]
+		while not self.transaction_queue.empty():
+			self.add_transaction_to_block(self.transaction_queue.get_nowait())
 				
 
 	def generate_wallet(self):
@@ -68,20 +68,40 @@ class Node:
 		# bootstrap node informs all other nodes and gives the request node an id and 100 NBCs
 		pass
 
+	def create_transaction(self, receiver_idx : int, amount : int) -> bool:
+		# remember to broadcast it
+		receiver_node_info = self.ring[receiver_idx]
+		try:
+			transaction = Transaction(receiver_node_info.recipient_address, amount, self.wallet)
+		except TypeError:
+			# Reject transaction
+			return False
+		self.broadcast_transaction(transaction)
+		self.add_utxos(transaction.transaction_outputs)
+		if len(self.pending_block) == self.capacity:
+			self.transaction_queue.put(transaction)
+		else:
+			self.add_transaction_to_block(transaction)
+		return True
 
-	def create_transaction(self, sender, receiver, signature):
-		#remember to broadcast it
-		pass
+	def add_utxos(self, transaction_outputs: list):
+		for transaction_output in transaction_outputs:
+			if transaction_output.receiver_public_key == self.wallet.public_key:
+				self.wallet.add_utxo(transaction_output)
+			else:
+				for receiver_idx in self.ring:
+					if transaction_output.receiver_public_key == self.ring[receiver_idx].public_key:
+						self.ring[receiver_idx].add_utxo(transaction_output)
+						break
 
-
-	def broadcast_transaction(self):
+	def broadcast_transaction(self, transaction : Transaction):
 		pass
 
 	def validate_transaction(self):
 		#use of signature and NBCs balance
 		pass
 		
-
+	@wrapt.synchronized
 	def add_transaction_to_block(self, transaction : Transaction):
 		# If enough transactions mine
 		if self.pending_block.add_transaction(transaction) == self.capacity:
@@ -89,9 +109,11 @@ class Node:
 
 
 	def mine_block(self):
-		pass
-
-
+		while True:
+			self.pending_block.nonce = np.random.randint(2 ** 32)
+			if int(self.pending_block.my_hash, 16) < 2 ** (32 - self.difficulty):
+				break
+		self.create_new_block()
 
 	def broadcast_block(self):
 		pass

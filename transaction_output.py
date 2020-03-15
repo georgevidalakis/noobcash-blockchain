@@ -1,3 +1,5 @@
+from Crypto.PublicKey import RSA
+
 class TransactionOutput:
     def __init__(self, transaction_id, receiver_public_key, amount):
         self.transaction_id = transaction_id
@@ -5,10 +7,11 @@ class TransactionOutput:
         self.amount = amount
     
     @classmethod
-    def from_dict(self, transaction_output):
-        transaction_output['receiver_public_key'] = RSA.construct((transaction['receiver_public_key']['n'],
-                                                                   transaction['receiver_public_key']['e']))
-        self.__dict__.update(transaction_output)
+    def from_dict(cls, transaction_output : TransactionOutput):
+        transaction_output['receiver_public_key'] = RSA.construct((transaction_output['receiver_public_key']['n'],
+                                                                   transaction_output['receiver_public_key']['e']))
+        return cls(transaction_output['transaction_id'], transaction_output['receiver_public_key'],
+                   transaction_output['amount'])
 
     def to_dict(self):
         return {
