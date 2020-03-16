@@ -14,7 +14,7 @@ class NodeInfo:
     def remove_utxo(self, utxo_id):
         del self.utxo_dict[utxo_id]
     
-    def filtered_sum(self, utxo_ids):
+    def filtered_sum(self, utxo_ids) -> int:
         s = 0
         for utxo_id in utxo_ids:
             s += self.utxo_dict[utxo_id].amount

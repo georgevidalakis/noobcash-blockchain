@@ -74,8 +74,8 @@ class Transaction:
             'amount': self.amount,
             'transaction_inputs': self.transaction_inputs,
             'transaction_outputs': [transaction_output.to_dict() for transaction_output in self.transaction_outputs],
-            'transaction_id': self.transaction_id,
-            'Signature': self.Signature
+            'transaction_id': self.transaction_id.hexdigest(),
+            'Signature': self.Signature.hex()
         }
     
     def sign_transaction(self, private_key):

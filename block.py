@@ -12,7 +12,7 @@ class Block:
 			self.previous_hash = 1
 			self.nonce = 0
 			self.list_of_transactions = [genesis_transaction]
-			self.hash = 0
+			self.hash = '0'
 		else:
 			assert(genesis_transaction is None)
 			self.index = len(blockchain.chain)
@@ -32,9 +32,19 @@ class Block:
 			'nonce': self.nonce,
 			'list_of_transactions': [transaction.to_dict() for transaction in self.list_of_transactions]
 		})
+	
+	def to_dict(self) -> dict:
+		return {
+			'index': self.index,
+			'previous_hash': self.previous_hash,
+			'nonce': self.nonce,
+			'list_of_transactions': [transaction.to_dict() for transaction in self.list_of_transactions],
+			'hash': self.hash
+		}
 
-	def my_hash(self):
-		return SHA.new(data=self.message().encode('utf-8')).hexdigest()
+	def my_hash(self) -> str:
+		self.hash = SHA.new(data=self.message().encode('utf-8')).hexdigest()
+		return self.hash
 
 	def __len__(self):
 		return len(self.list_of_transactions)
