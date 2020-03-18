@@ -71,12 +71,14 @@ class Block:
         * `str` that somehow contains block's transactions,
         previous_hash, nonce [and index].'''
 
-        return json.dumps({
-            'index': self.index,
-            'previous_hash': self.previous_hash,
-            'nonce': self.nonce,
-            'list_of_transactions': [transaction.to_dict() for transaction in self.list_of_transactions]
-        })
+        return json.dumps(dict(
+            index=self.index,
+            previous_hash=self.previous_hash,
+            nonce=self.nonce,
+            list_of_transactions=[
+                t.to_dict() for t in self.list_of_transactions
+            ]
+        ))
     
     def to_dict(self):
         '''Transform attributes to `dict` for
@@ -91,7 +93,7 @@ class Block:
             previous_hash=self.previous_hash,
             nonce=self.nonce,
             list_of_transactions=[
-                transaction.to_dict() for transaction in self.list_of_transactions
+                t.to_dict() for t in self.list_of_transactions
             ],
             hash=self.hash,
             timestamp=self.timestamp

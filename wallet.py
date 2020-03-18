@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from requests import get
 from transaction_output import TransactionOutput
+from helpers import pubk_to_dict, pubk_from_dict
 
 class Wallet:
     '''Wallet of cryptocurrency of a node in a network.
@@ -36,7 +37,7 @@ class Wallet:
             self.public_key = self.private_key.publickey() # n, e
             # NOTE: added port into address
             self.address = f'{get("https://api.ipify.org").text}:{port}'
-        self.utxos = dict() # key: transaction_id, value: utxo
+        self.utxos = dict() # key: transaction_id.hex_digest, value: utxo
         self.balance = 0 # Utxos and balance may be inconsistent (lock)
 
     @classmethod
@@ -49,8 +50,7 @@ class Wallet:
         * `wallet`: `dict` directly from `to_dict()` send by bootstrap.'''
 
         inst = cls(port=0, this_node=False) # dummy port, wont be used
-        inst.public_key = RSA.construct(wallet['public_key']['n'],
-                                        wallet['public_key']['e'])
+        inst.public_key = pubk_from_dict(wallet['public_key'])
         inst.address = wallet['address']
         # NOTE: private key is not set
         return inst
@@ -64,8 +64,7 @@ class Wallet:
         * `dict` of proper attributes.'''
 
         return dict(
-            public_key=dict(n=self.public_key.n,
-                            e=self.public_key.e),
+            public_key=pubk_to_dict(self.public_key),
             address=self.address
         )
 
