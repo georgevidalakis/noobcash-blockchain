@@ -15,20 +15,25 @@ from requests import get
 from transaction_output import TransactionOutput
 
 class Wallet:
+    '''Wallet of cryptocurrency of a node in a network.
+    Contains `private_key` (RSA object) if wallet belongs to the node,
+    `public_key` (RSA object) of the node, `address` (ip+port as string)
+    of the node, `utxos` as a dict of its unspent transactions and `balance`
+    the sum of its available money.'''
 
-    def __init__(self, port, mine=True):
+    def __init__(self, port, this_node=True):
         '''Initialize `Wallet` object.
 
         Arguments:
 
         * `port`: the port where the node is listening to.
 
-        * `mine`: flag, whether this objects refers to the
+        * `this_node`: flag, whether this objects refers to the
         information of this node.'''
 
-        if mine:
+        if this_node:
             self.private_key = RSA.generate(2048)
-            self.public_key = self.private_key.publickey()
+            self.public_key = self.private_key.publickey() # n, e
             # NOTE: added port into address
             self.address = f'{get("https://api.ipify.org").text}:{port}'
         self.utxos = dict() # key: transaction_id, value: utxo
@@ -41,9 +46,9 @@ class Wallet:
 
         Arguments:
 
-        * `wallet`: `dict` directly from json send by bootstrap.'''
+        * `wallet`: `dict` directly from `to_dict()` send by bootstrap.'''
 
-        inst = cls(port=0, mine=False) # dummy port, wont be used
+        inst = cls(port=0, this_node=False) # dummy port, wont be used
         inst.public_key = RSA.construct(wallet['public_key']['n'],
                                         wallet['public_key']['e'])
         inst.address = wallet['address']
