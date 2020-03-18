@@ -12,6 +12,8 @@ from time import time
 from uuid import uuid4
 
 from requests import get
+from wrapt import synchronized
+
 from transaction_output import TransactionOutput
 from helpers import pubk_to_dict, pubk_from_dict
 
@@ -83,7 +85,7 @@ class Wallet:
         self.utxos[utxo.transaction_id] = utxo
         self.balance += utxo.amount
 
-    def remove_utxo(self, utxo_id): # NOTE: transfered from NodeInfo
+    def remove_utxo(self, utxo_id): # NOTE: no conflict with get_sufficient_utxos
         '''Remove unspent transaction with transaction ID `utxo_id`
         from wallet. Balance is also updated.
 
@@ -110,6 +112,35 @@ class Wallet:
         for tid in utxo_ids:
             s += self.utxos[tid].amount
         return s
+
+    # Reasoning for lock: Do all necessary operations for validation
+    # within one function so we can lock it for each wallet
+    # e.g. two valid transactions signature-wise use the same utxos
+    # Note that concurrency while removing can only happen for the same sender
+    # since she is the only one that can access her utxos
+    # CAN BE REMOVED IF WE ASSUME NO ILL WILL
+    @synchronized
+    def check_and_remove_utxo(self, utxo_ids, amount):
+        '''Encapsulates checking and removing transaction inputs.
+        
+        Arguments:
+        
+        * `utxo_ids`: `list` of hexadecimal `str`s.
+
+        * `amount`: Total amount of transaction inputs.
+        
+        Returns:
+        
+        * `True` if it successfully removes the unspent transactions,
+        else `False`.'''
+        try:
+            if amount != self.filtered_sum(utxo_ids):
+                return False
+            for utxo_id in utxo_ids:
+                self.remove_utxo(utxo_id)
+            return True
+        except KeyError: # utxo not found
+            return False
 
     ##########################################################
     ############## different ways to pick utxos ##############
