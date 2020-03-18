@@ -22,7 +22,7 @@ class Wallet:
     of the node, `utxos` as a dict of its unspent transactions and `balance`
     the sum of its available money.'''
 
-    def __init__(self, port, this_node=True):
+    def __init__(self, port: int, this_node=True):
         '''Initialize `Wallet` object.
 
         Arguments:
