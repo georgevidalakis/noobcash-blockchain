@@ -23,7 +23,7 @@ class TransactionOutput:
         self.amount = amount
 
     @classmethod
-    def from_dict(cls, transaction_output : TransactionOutput):
+    def from_dict(cls, transaction_output: TransactionOutput):
         '''Constructor to be used when receiving a transaction.
         
         Arguments:

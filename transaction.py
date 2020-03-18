@@ -17,11 +17,10 @@ from helpers import pubk_from_dict, sign_from_dict, pubk_to_dict, sign_to_dict
 
 class Transaction:
     '''Cryptocurrency transaction. Contains "unique" `transaction_id`
-    (SHA object, needed in this format to sign transaction), sender 
-    RSA public key `sender_pubk`, receiver RSA public key `receiver_pubk`,
-    transaction IDs `transaction_inputs` where the money from `sender_pubk`
-    supposedly come from, `signature` with private key of node for
-    verification (in bytes)'''
+    (hex digest of SHA object), sender RSA public key `sender_pubk`,
+    receiver RSA public key `receiver_pubk`, transaction IDs `transaction_inputs`
+    where the money from `sender_pubk` supposedly come from, `signature` with
+    private key of node for verification (in bytes)'''
 
     def __init__(self, recipient_pubk, value: int, my_wallet):
         '''Initialize `Transaction` object.
@@ -38,30 +37,33 @@ class Transaction:
 
         self.receiver_pubk = recipient_pubk
 
-        self.amount = value
-
         if my_wallet is None:
             # GENESIS
             self.sender_pubk = 0
             self.transaction_inputs, change = [], 0
-            self.signature = b'No need'
         else:
             self.sender_pubk = my_wallet.public_key
-            # list of hex_digests
-            self.transaction_inputs, change = my_wallet.get_sufficient_utxos(value)
-            self.signature = self.sign_transaction(my_wallet.private_key)
-
-        self.transaction_id = SHA.new(data=self.message().encode('utf-8'))
+            # list of hex digests
+            self.transaction_inputs, change = my_wallet.get_sufficient_utxos(value) # can raise
+                                                                                    # TypeError
+        # hex digest
+        self.transaction_id = self.make_hash()
 
         self.transaction_outputs = [
-            TransactionOutput(self.transaction_id.hexdigest(),
+            TransactionOutput(self.transaction_id,
                               self.receiver_address, value)
         ]
         if change > 0:
             self.transaction_outputs.append(
-                TransactionOutput(self.transaction_id.hexdigest(),
+                TransactionOutput(self.transaction_id,
                                   self.sender_address, change)
             )
+
+        if my_wallet is not None:
+            self.signature = self.sign_transaction(my_wallet.private_key)
+        else: # redundant but to be sure
+            self.signature = b'No need'
+
 
     @classmethod
     def from_dict(cls, transaction: dict):
@@ -74,7 +76,6 @@ class Transaction:
 
         receiver_pubk = pubk_from_dict(transaction['receiver_pubk'])
         sender_pubk = pubk_from_dict(transaction['sender_pubk'])
-        amount = int(transaction['amount'])
         transaction_inputs = transaction['transaction_inputs']
         transaction_outputs = [
             TransactionOutput.from_dict(to_dict) \
@@ -83,11 +84,11 @@ class Transaction:
         signature = sign_from_dict(transaction['signature'])
 
         # use constructor if genesis transaction
-        inst = cls(receiver_pubk, amount, my_wallet=None)
+        inst = cls(receiver_pubk, transaction_outputs[0].amount, my_wallet=None)
         inst.sender_pubk = sender_pubk
         inst.transaction_inputs = transaction_inputs
         # update id after new attributes
-        inst.transaction_id = SHA.new(data=inst.message().encode('utf-8'))
+        inst.transaction_id = inst.make_hash()
         # assign correct transaction outputs
         inst.transaction_outputs = transaction_outputs
         inst.signature = signature
@@ -106,9 +107,25 @@ class Transaction:
         return json.dumps(dict(
             sender_pubk=pubk_to_dict(self.sender_pubk),
             receiver_pubk=pubk_to_dict(self.receiver_pubk),
-            amount=self.amount,
             transaction_inputs=self.transaction_inputs
         ))
+
+    def make_hash(self, as_str=True):
+        '''Get SHA hash of transaction, in data type specified
+        by `as_str`.
+        
+        Arguments:
+        
+        * `as_str`: `bool`, whether to return SHA object
+        or `hexdigest()`.
+        
+        Returns:
+        
+        * Hash as SHA object or `str`'''
+        hash = SHA.new(data=self.message().encode('utf-8'))
+        if as_str:
+            hash = hash.hexdigest()
+        return hash
 
     def to_dict(self):
         '''Transform attributes to `dict` for
@@ -125,7 +142,6 @@ class Transaction:
         return dict(
             sender_pubk=pubk_to_dict(self.sender_pubk),
             receiver_pubk=pubk_to_dict(self.receiver_address),
-            amount=self.amount,
             transaction_inputs=self.transaction_inputs,
             transaction_outputs=[
                 to.to_dict() for to in self.transaction_outputs
@@ -144,7 +160,7 @@ class Transaction:
 
         * `bytes` signature.'''
 
-        return PKCS1_v1_5.new(private_key).sign(self.transaction_id)
+        return PKCS1_v1_5.new(private_key).sign(self.make_hash(as_str=False))
 
 
 '''
