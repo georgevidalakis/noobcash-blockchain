@@ -24,7 +24,7 @@ class Transaction:
     verification (in bytes)'''
 
     def __init__(self, recipient_pubk, value: int, my_wallet):
-        '''Initialize `Transaction`object.
+        '''Initialize `Transaction` object.
 
         Arguments:
 
