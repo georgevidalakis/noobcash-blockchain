@@ -34,8 +34,8 @@ class Block:
             self.list_of_transactions = [genesis_transaction]
             self.hash = '0'
         else:
-            self.index = len(blockchain.chain)
-            self.previous_hash = blockchain.chain[-1].hash
+            self.index = len(blockchain)
+            self.previous_hash = blockchain.chain.get_block_hash(-1)
             self.list_of_transactions = []
 
         self.timestamp = time.time()
@@ -61,6 +61,8 @@ class Block:
             Transaction.from_dict(t) for t in block['list_of_transactions']
         ]
         inst.timestamp = block['timestamp']
+
+        return inst
 
     def message(self):
         '''"Arbitrary" choice of form of data to pass to hash function
@@ -136,3 +138,7 @@ class Block:
         self.list_of_transactions.append(transaction)
 
         return len(self.list_of_transactions)
+
+    def validate_hash(self, difficulty: int):
+        ''''''
+        return int(self.my_hash(), 16) < 2 ** (32 - difficulty)

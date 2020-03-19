@@ -82,27 +82,29 @@ class Wallet:
 
         * `utxo`: (hopefully) legit TransactionOutput.'''
 
+        # NOTE: check for ill will ??
         self.utxos[utxo.transaction_id] = utxo
         self.balance += utxo.amount
 
-    def remove_utxo(self, utxo_id): # NOTE: no conflict with get_sufficient_utxos
-        '''Remove unspent transaction with transaction ID `utxo_id`
+    def remove_utxos(self, utxo_ids): # NOTE: no conflict with get_sufficient_utxos
+        '''Remove unspent transactions in `utxo_ids`
         from wallet. Balance is also updated.
 
         Arguments:
 
-        * `utxo_id`: Transaction ID (SHA object) of
+        * `utxo_ids`: List of Transaction ID (hex string) of
         unspent transaction to be removed.'''
 
-        self.balance -= self.utxos[utxo_id]
-        del self.utxo[utxo_id]
+        for utxo_id in utxo_ids:
+            self.balance -= self.utxos[utxo_id]
+            del self.utxo[utxo_id]
 
     def filtered_sum(self, utxo_ids): # NOTE: transfered from NodeInfo
         '''Compute sum of designated unspent transactions.
 
         Arguments:
 
-        * `utxo_ids`: list of transaction IDs (SHA objects).
+        * `utxo_ids`: list of transaction IDs (hex string).
 
         Returns:
 
@@ -136,8 +138,7 @@ class Wallet:
         try:
             if amount != self.filtered_sum(utxo_ids):
                 return False
-            for utxo_id in utxo_ids:
-                self.remove_utxo(utxo_id)
+            self.remove_utxos(utxo_ids)
             return True
         except KeyError: # utxo not found
             return False
@@ -156,7 +157,7 @@ class Wallet:
 
         Returns:
 
-        * (Transaction IDs (SHA objects) in a `list`, value of leftover NBCs [change]) if
+        * (Transaction IDs (hex string) in a `list`, value of leftover NBCs [change]) if
         amount can be satisfied, else `None`.'''
 
         if amount > self.balance: # if not enough NBCs
@@ -190,7 +191,7 @@ class Wallet:
 
         Returns:
 
-        * (Transaction IDs (SHA object) in a `list`, value of leftover NBCs [change]) if
+        * (Transaction IDs (hex string) in a `list`, value of leftover NBCs [change]) if
         amount can be satisfied, else `None`.'''
 
         change = self.balance - amount
@@ -214,7 +215,7 @@ class Wallet:
 
         Returns:
 
-        * (Transaction IDs (SHA object) in a `list`, value of leftover NBCs [change]) if
+        * (Transaction IDs (hex string) in a `list`, value of leftover NBCs [change]) if
         amount can be satisfied, else `None`.'''
 
         if amount > self.balance: # if not enough NBCs

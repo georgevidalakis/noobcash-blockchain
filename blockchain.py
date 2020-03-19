@@ -52,3 +52,12 @@ class Blockchain:
             Block.from_dict(b) for b in blockchain['chain']
         ]
         return cls(received_blockchain=blockchain)
+
+    def get_block_hash(self, i):
+        return self.chain[i].hash
+
+    def append_block(self, block: Block):
+        self.chain.append(block)
+
+    def __len__(self):
+        return len(self.chain)

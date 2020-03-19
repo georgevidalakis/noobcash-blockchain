@@ -1,9 +1,13 @@
+import os
+import subprocess
+
 from block import Block
 from wallet import Wallet
 from transaction import Transaction
 from blockchain import Blockchain
 
 import wrapt
+import copy
 import json
 import queue
 import urllib3
@@ -38,9 +42,15 @@ class Node:
         self.ring = {
             self.my_id: wallet
         }
+        self.ring_bak = {}
         self.pubk2ind = dict() # public key to index correspondence
 
+        # validated transactions
         self.transaction_queue = []
+        # transactions not reflected in wallets of ring
+        self.unprocessed_transaction_queue = []
+
+        self.miner_pid = None
 
         self.capacity = capacity
 
@@ -162,18 +172,20 @@ class Node:
             return False
 
         self.broadcast_transaction(transaction)
-        self.add_utxos(transaction.transaction_outputs)
+        self.add_utxos(transaction.transaction_outputs, self.ring)
         self.transaction_queue.append(transaction)
 
-    def add_utxos(self, transaction_outputs: list):
+    def add_utxos(self, transaction_outputs: list, ring: dict):
         '''Add unspent transactions to respective wallets.
         
         Arguments:
         
-        * `transaction_outputs`: iterable of `TransactionOutput` objects.'''
+        * `transaction_outputs`: iterable of `TransactionOutput` objects.
+        
+        * `ring`: `Wallet` of nodes.'''
 
         for to in transaction_outputs:
-            self.ring[self.pubk2ind(to.receiver_public_key)].add_utxo(to)
+            ring[self.pubk2ind(to.receiver_public_key)].add_utxo(to)
 
     def send_dict_to_address(self, request_params):
         '''Send specified dict to an address.
@@ -217,15 +229,15 @@ class Node:
 
         return all(results)
 
-    def validate_transaction(self, transaction: Transaction):
+    def validate_transaction(self, transaction: Transaction, ring: dict):
         '''Validate received transaction.
-        
+
         Arguments:
-        
+
         `transaction`: [Reconstructed from `dict`] `Transaction`.
-        
+
         Returns:
-        
+
         `True` if valid.'''
 
         # signature
@@ -243,50 +255,103 @@ class Node:
             return False
 
         # check if transaction inputs exist
-        amount = sum([utxo.amount for utxo in transaction.transaction_outputs])
-        return self.ring[self.pubk2ind[transaction.sender_pubk]]\
+        amount = 0
+        for utxo in transaction.transaction_outputs:
+            if utxo.amount < 0:
+                return False
+            amount += utxo.amount
+        return ring[self.pubk2ind[transaction.sender_pubk]]\
             .check_and_remove_utxo(transaction.transaction_inputs, amount)
 
-
-    def create_new_block(self):
-        self.pending_block = Block(self.chain)
-        while not self.transaction_queue.empty():
-            self.add_transaction_to_block(self.transaction_queue.get_nowait())
-
-
     @wrapt.synchronized
-    def add_transaction_to_block(self, transaction: Transaction):
-        # If enough transactions mine
-        if self.pending_block.add_transaction(transaction) == self.capacity:
-            self.mine_block()
+    def add_transaction_to_queue(self, transaction: Transaction):
+        ''''''
+        self.transaction_queue.append(transaction)
 
+    def miner(self):
+        ''''''
+        block = Block(self.blockchain)
+        for i in range(self.capacity):
+            block.add_transaction(self.transaction_queue[i])
+        while True:
+            # sampling with replacement -> same odds if running concurrently
+            block.nonce = np.random.randint(2 ** 32)
+            if block.validate_hash(self.difficulty):
+                break
+
+        self.send_dict_to_address((block.to_dict(),
+                                   f'{self.my_wallet().address}/mined_block'))
+
+        # su-su-suicide
+        os._exit(0)
 
     def mine_block(self):
-        while True:
-            self.pending_block.nonce = np.random.randint(2 ** 32)
-            if int(self.pending_block.my_hash, 16) < 2 ** (32 - self.difficulty):
-                break
-        self.chain.append(self.pending_block)
-        self.broadcast_block()
-        self.create_new_block()
+        ''''''
+        pid = os.fork()
+        if pid == 0: # child
+            self.miner()
+        else: # father
+            self.miner_pid = pid
 
-    def broadcast_block(self):
-        broadcast_message = self.pending_block.to_dict()
+    # NOTE: lock with receive block
+    def check_my_mined_block(self, block_dict: dict):
+        ''''''
+        self.miner_pid = None
+        block = Block.from_dict(block_dict)
+        if block.previous_hash == self.blockchain.get_block_hash(-1):
+            self.blockchain.append_block(block)
+
+            block_transactions, self.transaction_queue = \
+                self.transaction_queue[:self.capacity], self.transaction_queue[self.capacity:]
+
+            for t in block_transactions:
+                self.add_utxos(t.transaction_outputs, ring=self.ring_bak)
+                self.ring_bak[self.pubk2ind[t.sender_pubk]].remove_utxos(t.transaction_inputs)
+
+    def broadcast_block(self, block: Block):
+        ''''''
+        broadcast_message = block.to_dict()
         pool = ThreadPool(NUM_OF_THREADS)
-        request_params_list = [(broadcast_message, f'{self.ring[receiver_idx].address}/block') for receiver_idx in self.ring]
+        request_params_list = [
+            (broadcast_message, f'{self.ring[receiver_idx].address}/block') \
+                 for receiver_idx in self.ring if receiver_idx != self.my_id
+        ]
         results = pool.map(self.send_dict_to_address, request_params_list)
         pool.close()
         pool.join()
         return all(results)
 
-    def valid_proof(self, difficulty):
-        pass
-    
+    def valid_proof(self, block: Block, ring: dict):
+        ''''''
+        if not block.validate_hash(self.difficulty):
+            return False
+        ring_bak_bak = copy.deepcopy(ring)
+
+        try:
+            for t in block.list_of_transactions:
+                if not self.validate_transaction(t, ring):
+                    raise ValueError
+                self.add_utxos(t.transaction_outputs, ring)
+        except ValueError:
+            for k in ring: # change values, not pointer
+                ring[k] = ring_bak_bak[k]
+            return False
+        
+        return True
+
+
     #concencus functions
 
-    def valid_chain(self, chain):
-        #check for the longer chain across all nodes
-        pass
+    def valid_chain(self, blockchain):
+        # check for the longer chain across all nodes
+        new_ring = {k: Wallet.from_dict(self.ring[k].to_dict()) for k in self.ring}
+        for block in blockchain.chain:
+            if not self.valid_proof(block, new_ring):
+                return False
+        for k in self.ring_bak:
+            self.ring_bak[k] = new_ring[k]
+            self.ring[k] = new_ring[k]
+        # NOTE: keep transactions not in new chain
 
 
     def resolve_conflicts(self):
