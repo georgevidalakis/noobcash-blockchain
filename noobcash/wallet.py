@@ -97,7 +97,7 @@ class Wallet:
 
         for utxo_id in utxo_ids:
             self.balance -= self.utxos[utxo_id]
-            del self.utxo[utxo_id]
+            del self.utxos[utxo_id]
 
     def filtered_sum(self, utxo_ids): # NOTE: transfered from NodeInfo
         '''Compute sum of designated unspent transactions.

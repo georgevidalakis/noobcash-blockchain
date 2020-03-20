@@ -1,10 +1,14 @@
 import os
+import signal
 import subprocess
+from typing import Union
 
 from block import Block
 from wallet import Wallet
 from transaction import Transaction
 from blockchain import Blockchain
+
+from ordered_set import OrderedSet
 
 import wrapt
 import copy
@@ -75,9 +79,8 @@ class Node:
         (assumed to be known from the start).'''
 
         genesis_transaction = Transaction(recipient_pubk=self.my_wallet().public_key,
-                                          amount=100*n, my_wallet=None)
-        return Blockchain(received_blockchain=None,
-                          genesis_transaction=genesis_transaction)
+                                          value=100*n, my_wallet=None)
+        return Blockchain(genesis_transaction=genesis_transaction)
     
     def first_contact_data(self, bootstrap_address: str):
         '''Contact bootstrap to register into the network
@@ -93,7 +96,7 @@ class Node:
 
         * ([ascending] ID of node in the network, validated bootstrap's blockchain).'''
 
-        myinfo = self.wallet.to_dict()
+        myinfo = self.my_wallet().to_dict()
 
         http = urllib3.PoolManager()
 
@@ -105,7 +108,7 @@ class Node:
                                                body=myinfo).body)
             # blockchain in response is (ordered) list of blocks
             blockchain = Blockchain.from_dict(response['blockchain'])
-            if self.valid_chain(chain=blockchain):
+            if self.valid_chain(blockchain):
                 break
 
         return response['id'], blockchain
@@ -142,8 +145,6 @@ class Node:
         index = self.pubk2ind.get(node_wallet.public_key, len(self.pubk2ind) + 1)
         self.pubk2ind[node_wallet.public_key] = index
         self.ring[index] = node_wallet
-        # we are contacting the bootstrap
-        # loop until we get proper chain
 
         info = dict(
             blockchain=self.blockchain.to_dict(),
@@ -185,7 +186,7 @@ class Node:
         * `ring`: `Wallet` of nodes.'''
 
         for to in transaction_outputs:
-            ring[self.pubk2ind(to.receiver_public_key)].add_utxo(to)
+            ring[self.pubk2ind[to.receiver_public_key]].add_utxo(to)
 
     def send_dict_to_address(self, request_params):
         '''Send specified dict to an address.
@@ -345,15 +346,128 @@ class Node:
     def valid_chain(self, blockchain):
         # check for the longer chain across all nodes
         new_ring = {k: Wallet.from_dict(self.ring[k].to_dict()) for k in self.ring}
-        for block in blockchain.chain:
+        for block in blockchain.chain[1:]:
             if not self.valid_proof(block, new_ring):
                 return False
         for k in self.ring_bak:
             self.ring_bak[k] = new_ring[k]
             self.ring[k] = new_ring[k]
-        # NOTE: keep transactions not in new chain
 
+        return True
+
+    def get_len_from_address(self, url: str):
+        ''''''
+
+        http = urllib3.PoolManager()
+        response = http.request('GET', url,
+                                headers={'Accept': 'application/json'})
+        
+        if response.status != 200 or 'blockchain_len' not in response.body:
+            return 0
+        
+        blockchain_len = json.loads(response.body)
+
+        if not isinstance(blockchain_len, int):
+            return 0
+
+        return blockchain_len
+
+    def longest_blockchain_info(self):
+        ''''''
+
+        pool = ThreadPool(NUM_OF_THREADS)
+        urls = [
+            f'{self.ring[receiver_idx].address}/length' \
+                for receiver_idx in self.ring if receiver_idx != self.my_id
+        ]
+        blockchain_lengths = pool.map(self.get_len_from_address, urls)
+        pool.close()
+        pool.join()
+
+        # NOTE: Consider returning the whole list to be able to loop in case of lying
+
+        node_with_longest_chain = np.argmax(blockchain_lengths)
+        max_blockchain_len = blockchain_lengths[node_with_longest_chain]
+
+        if node_with_longest_chain >= self.my_id:
+            node_with_longest_chain += 1
+
+        return node_with_longest_chain, max_blockchain_len
+    
+    # TODO: Lock (maybe hand release)
+    def receive_transaction(self, transaction: Union[dict, Transaction]):
+
+        if isinstance(transaction, dict):
+            transaction = Transaction.from_dict(transaction)
+        
+        self.validate_transaction(transaction, self.ring)
+        
+        self.add_utxos(transaction.transaction_outputs, self.ring)
+        self.transaction_queue.append(transaction)
+
+    def process_transactions(self):
+        ''''''
+
+        for t in self.unprocessed_transaction_queue:
+            self.receive_transaction(t)
+        
+        self.unprocessed_transaction_queue = []
+
+    def kill_miner(self):
+        ''''''
+
+        if self.miner_pid is not None:
+            os.kill(self.miner_pid, signal.SIGKILL)
+            self.miner_pid = None
 
     def resolve_conflicts(self):
-        #resolve correct chain
-        pass
+        ''''''
+        # resolve correct chain
+        # NOTE: keep transactions not in new chain
+
+        node_with_longest_chain, max_blockchain_len = self.longest_blockchain_info()
+
+        if len(self.blockchain) >= max_blockchain_len:
+            return
+        
+        url = f'{self.ring[node_with_longest_chain].address}/blockchain'
+
+        http = urllib3.PoolManager()
+        response = http.request('GET', url,
+                                headers={'Accept': 'application/json'})
+        
+        blockchain = Blockchain.from_dict(json.loads(response.body))
+
+        if not self.valid_chain(blockchain):
+            return
+        
+        self.kill_miner()
+        
+        transactions_dif = self.blockchain.set_of_transactions() + \
+                           OrderedSet(self.transaction_queue) + \
+                           OrderedSet(self.unprocessed_transaction_queue) - \
+                           blockchain.set_of_transactions()
+
+        self.unprocessed_transaction_queue = list(transactions_dif)
+        self.transaction_queue = []
+
+        self.blockchain = blockchain
+
+        self.process_transactions()
+
+    def receive_block(self, block_dict: dict):
+        ''''''
+
+        block = Block.from_dict(block_dict)
+
+        if block.previous_hash in self.blockchain.hashes_set and \
+           block.previous_hash != self.blockchain.get_block_hash(-1):
+           return
+        
+        if block.previous_hash != self.blockchain.get_block_hash(-1):
+            self.resolve_conflicts()
+            return
+
+        if self.valid_proof(block_dict, self.ring_bak):
+            self.kill_miner()
+            self.blockchain.append_block(block)

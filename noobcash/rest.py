@@ -29,9 +29,8 @@ loopy = Test()
 
 @app.route('/test')
 def test():
-    loopy.inc(True)
 
-    return request.host, 200
+    return jsonify(2), 200
 
 @app.route('/trial')
 def trial():

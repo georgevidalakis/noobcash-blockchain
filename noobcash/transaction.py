@@ -51,19 +51,26 @@ class Transaction:
 
         self.transaction_outputs = [
             TransactionOutput(self.transaction_id,
-                              self.receiver_address, value)
+                              self.receiver_pubk, value)
         ]
         if change > 0:
             self.transaction_outputs.append(
                 TransactionOutput(self.transaction_id,
-                                  self.sender_address, change)
+                                  self.sender_pubk, change)
             )
 
         if my_wallet is not None:
             self.signature = self.sign_transaction(my_wallet.private_key)
         else: # redundant but to be sure
             self.signature = b'No need'
+    
+    def __eq__(self, o : Transaction):
+        ''''''
+        return type(o) == Transaction and self.transaction_id == o.transaction_id
 
+    def __hash__(self):
+        ''''''
+        return self.transaction_id
 
     @classmethod
     def from_dict(cls, transaction: dict):
@@ -141,7 +148,7 @@ class Transaction:
 
         return dict(
             sender_pubk=pubk_to_dict(self.sender_pubk),
-            receiver_pubk=pubk_to_dict(self.receiver_address),
+            receiver_pubk=pubk_to_dict(self.receiver_pubk),
             transaction_inputs=self.transaction_inputs,
             transaction_outputs=[
                 to.to_dict() for to in self.transaction_outputs
