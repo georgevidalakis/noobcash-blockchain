@@ -14,8 +14,8 @@ from uuid import uuid4
 from requests import get
 from wrapt import synchronized
 
-from transaction_output import TransactionOutput
-from helpers import pubk_to_dict, pubk_from_dict
+from noobcash.transaction_output import TransactionOutput
+from noobcash.helpers import pubk_to_dict, pubk_from_dict
 
 class Wallet:
     '''Wallet of cryptocurrency of a node in a network.
@@ -122,7 +122,7 @@ class Wallet:
     # since she is the only one that can access her utxos
     # CAN BE REMOVED IF WE ASSUME NO ILL WILL
     @synchronized
-    def check_and_remove_utxo(self, utxo_ids, amount):
+    def check_and_remove_utxos(self, utxo_ids, amount):
         '''Encapsulates checking and removing transaction inputs.
         
         Arguments:
@@ -136,6 +136,8 @@ class Wallet:
         * `True` if it successfully removes the unspent transactions,
         else `False`.'''
         try:
+            # NOTE: doesnt check for double spending,
+            # should be done prior to calling this function (DONE)
             if amount != self.filtered_sum(utxo_ids):
                 return False
             self.remove_utxos(utxo_ids)

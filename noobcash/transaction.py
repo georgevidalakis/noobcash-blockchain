@@ -11,8 +11,8 @@ from flask import Flask, jsonify, request, render_template
 
 import json
 
-from transaction_output import TransactionOutput
-from helpers import pubk_from_dict, sign_from_dict, pubk_to_dict, sign_to_dict
+from noobcash.transaction_output import TransactionOutput
+from noobcash.helpers import pubk_from_dict, sign_from_dict, pubk_to_dict, sign_to_dict
 
 
 class Transaction:

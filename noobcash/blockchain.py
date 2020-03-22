@@ -1,4 +1,4 @@
-from block import Block
+from noobcash.block import Block
 
 from ordered_set import OrderedSet
 

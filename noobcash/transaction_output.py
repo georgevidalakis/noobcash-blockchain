@@ -1,4 +1,4 @@
-from helpers import pubk_from_dict, pubk_to_dict
+from noobcash.helpers import pubk_from_dict, pubk_to_dict
 
 class TransactionOutput:
     '''Transaction Output (utxo). Contains "unique" transaction ID

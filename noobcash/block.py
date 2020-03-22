@@ -1,4 +1,4 @@
-from transaction import Transaction
+from noobcash.transaction import Transaction
 
 import time
 import json
