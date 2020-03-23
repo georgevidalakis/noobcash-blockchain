@@ -1,15 +1,12 @@
-import binascii
+'''Wallet of cryptocurrency of a node in a network.
+Contains `private_key` (RSA object) if wallet belongs to the node,
+`public_key` (RSA object) of the node, `address` (ip+port as string)
+of the node, `utxos` as a dict of its unspent transactions and `balance`
+the sum of its available money.'''
 
-import Crypto
-import Crypto.Random
-from Crypto.Hash import SHA
+import copy
+
 from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_v1_5
-
-import hashlib
-import json
-from time import time
-from uuid import uuid4
 
 from requests import get
 from wrapt import synchronized
@@ -70,7 +67,33 @@ class Wallet:
             address=self.address
         )
 
+    def deepcopy(self):
+        '''Deepcopy this wallet (copy.deepcopy raises Error).
+
+        Returns:
+
+        * Replica of this object wrt to values, not memory location etc.'''
+
+        inst = Wallet(0, this_node=False)
+        inst.balance = self.balance
+        inst.utxos = copy.deepcopy(self.utxos)
+        try:
+            inst.private_key = RSA.RsaKey(n=self.private_key.n,
+                                          e=self.private_key.e,
+                                          d=self.private_key.d,
+                                          p=self.private_key.p,
+                                          q=self.private_key.q,
+                                          u=self.private_key.u)
+        except AttributeError:
+            pass
+        inst.public_key = RSA.RsaKey(n=self.public_key.n,
+                                     e=self.public_key.e)
+        inst.address = self.address
+
+        return inst
+
     def get_sufficient_utxos(self, amount: int):
+        '''Get enough unspent transactions from wallet.'''
         return self._get_necessary_utxos(amount)
 
 
@@ -110,10 +133,10 @@ class Wallet:
 
         * Sum of amounts in these unspent transactions.'''
 
-        s = 0
+        suma = 0
         for tid in utxo_ids:
-            s += self.utxos[tid].amount
-        return s
+            suma += self.utxos[tid].amount
+        return suma
 
     # Reasoning for lock: Do all necessary operations for validation
     # within one function so we can lock it for each wallet
@@ -124,17 +147,18 @@ class Wallet:
     @synchronized
     def check_and_remove_utxos(self, utxo_ids, amount):
         '''Encapsulates checking and removing transaction inputs.
-        
+
         Arguments:
-        
+
         * `utxo_ids`: `list` of hexadecimal `str`s.
 
         * `amount`: Total amount of transaction inputs.
-        
+
         Returns:
-        
+
         * `True` if it successfully removes the unspent transactions,
         else `False`.'''
+
         try:
             # NOTE: doesnt check for double spending,
             # should be done prior to calling this function (DONE)
@@ -165,23 +189,23 @@ class Wallet:
         if amount > self.balance: # if not enough NBCs
             return None
 
-        utxo_ids, s = [], 0
+        utxo_ids, suma = [], 0
         for tid in self.utxos:
             # this way of iterating ensures that we get the lru utxos
             # even though we cannot pop
             # popitem() in while loop would get mru
             # pop() in for loop needs deepcopy
             utxo_ids.append(tid)
-            s += self.utxos[tid].amount
-            if s >= amount:
+            suma += self.utxos[tid].amount
+            if suma >= amount:
                 break
 
         for tid in utxo_ids:
             # remove used utxos
             self.utxos.pop(tid)
-        self.balance -= s
+        self.balance -= suma
 
-        return utxo_ids, s - amount
+        return utxo_ids, suma - amount
 
     def _get_all_utxos(self, amount: int):
         '''Get ALL unspent transactions from wallet to
@@ -230,24 +254,23 @@ class Wallet:
             self.utxos[last_tid] = last_utxo # restore last entry
             return self._get_all_utxos(amount)
 
-        utxo_ids, s = [], 0
+        utxo_ids, suma = [], 0
         for tid in self.utxos:
             utxo_ids.append(tid)
-            s += self.utxos[tid].amount
+            suma += self.utxos[tid].amount
 
-        self.balance -= s
+        self.balance -= suma
         self.utxos = {last_tid: last_utxo} # keep only last entry
 
-        return utxo_ids, s - amount
+        return utxo_ids, suma - amount
 
 
-"""
-RSA outputs for reference:
 
->>> pr = RSA.generate(2048)
->>> pu = pr.publickey()
->>> pu.n
-536290887991748995089561472211460467762611...
->>> pu.e
-65537
-"""
+# RSA outputs for reference:
+
+# >>> pr = RSA.generate(2048)
+# >>> pu = pr.publickey()
+# >>> pu.n
+# 536290887991748995089561472211460467762611...
+# >>> pu.e
+# 65537

@@ -1,3 +1,5 @@
+'''Auxiliary functions used throughout `noobcash`.'''
+
 from Crypto.PublicKey import RSA
 
 def pubk_to_dict(pubk):
@@ -11,8 +13,11 @@ def pubk_to_dict(pubk):
     Returns:
 
     * `dict` with keys ['n', 'e'].'''
-
-    return dict(n=pubk.n, e=pubk.e)
+    try:
+        return dict(n=pubk.n, e=pubk.e)
+    except AttributeError:
+        # genesis wallet
+        return pubk
 
 def pubk_from_dict(pubk_dict):
     '''Retrieve RSA public key from `dict`
@@ -26,7 +31,23 @@ def pubk_from_dict(pubk_dict):
 
     * RSA public key.'''
 
-    return RSA.construct(pubk_dict['n'], pubk_dict['e'])
+    try:
+        return RSA.construct(pubk_dict['n'], pubk_dict['e'])
+    except AttributeError:
+        return pubk_dict
+
+def pubk_to_key(pubk):
+    '''Get hashable info from RSA public key
+
+    Arguments:
+
+    * `pubk`: RSA public key.
+
+    Returns:
+
+    * `tuple` of (`n`, `e`).'''
+
+    return (pubk.n, pubk.e)
 
 def sign_to_dict(signature):
     '''Transform signature to recoverable form. Name is
@@ -55,3 +76,15 @@ def sign_from_dict(signature_dict):
     * `bytes` signature.'''
 
     return bytes.fromhex(signature_dict)
+
+def wallet_dict_deepcopy(ring):
+    '''Deepcopy of whole `dict` with `Wallet`s.
+
+    Returns:
+
+    * Deepcopied `dict` of `Wallet`s.'''
+
+    new_ring = {}
+    for k in ring:
+        new_ring[k] = ring[k].deepcopy()
+    return new_ring

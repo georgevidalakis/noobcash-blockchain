@@ -1,15 +1,17 @@
-import binascii
-
-import Crypto
-import Crypto.Random
-from Crypto.Hash import SHA
-from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_v1_5
-
-import requests
-from flask import Flask, jsonify, request, render_template
+'''Cryptocurrency transaction. Contains "unique" `transaction_id`
+    (hex digest of SHA object), sender RSA public key `sender_pubk`,
+    receiver RSA public key `receiver_pubk`, transaction IDs `transaction_inputs`
+    where the money from `sender_pubk` supposedly come from, `signature` with
+    private key of node for verification (in bytes).'''
 
 import json
+
+# import Crypto.Random
+from Crypto.Hash import SHA
+# from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+
+# from flask import Flask, jsonify, request, render_template
 
 from noobcash.transaction_output import TransactionOutput
 from noobcash.helpers import pubk_from_dict, sign_from_dict, pubk_to_dict, sign_to_dict
@@ -20,7 +22,7 @@ class Transaction:
     (hex digest of SHA object), sender RSA public key `sender_pubk`,
     receiver RSA public key `receiver_pubk`, transaction IDs `transaction_inputs`
     where the money from `sender_pubk` supposedly come from, `signature` with
-    private key of node for verification (in bytes)'''
+    private key of node for verification (in bytes).'''
 
     def __init__(self, recipient_pubk, value: int, my_wallet):
         '''Initialize `Transaction` object.
@@ -63,13 +65,13 @@ class Transaction:
             self.signature = self.sign_transaction(my_wallet.private_key)
         else: # redundant but to be sure
             self.signature = b'No need'
-    
-    def __eq__(self, o : Transaction):
-        ''''''
-        return type(o) == Transaction and self.transaction_id == o.transaction_id
+
+    def __eq__(self, o):
+        '''Compare IDs (assumed unique) for equality.'''
+        return isinstance(o, Transaction) and self.transaction_id == o.transaction_id
 
     def __hash__(self):
-        ''''''
+        '''Use ID (assumed unique) for hashing.'''
         return self.transaction_id
 
     @classmethod
@@ -120,19 +122,19 @@ class Transaction:
     def make_hash(self, as_str=True):
         '''Get SHA hash of transaction, in data type specified
         by `as_str`.
-        
+
         Arguments:
-        
+
         * `as_str`: `bool`, whether to return SHA object
         or `hexdigest()`.
-        
+
         Returns:
-        
+
         * Hash as SHA object or `str`'''
-        hash = SHA.new(data=self.message().encode('utf-8'))
+        _hash = SHA.new(data=self.message().encode('utf-8'))
         if as_str:
-            hash = hash.hexdigest()
-        return hash
+            _hash = _hash.hexdigest()
+        return _hash
 
     def to_dict(self):
         '''Transform attributes to `dict` for
@@ -170,19 +172,18 @@ class Transaction:
         return PKCS1_v1_5.new(private_key).sign(self.make_hash(as_str=False))
 
 
-'''
-Signature manipulation for reference:
 
->>> pr = RSA.generate(2048)
->>> pu = pr.publickey()
->>> h = SHA.new(b'gc10')
->>> PKCS1_v1_5.new(pr).sign(h)
-b'\x1a-\x1f\xfdv?#\x1e\x87!Y/\xee+\x18l\xbe\xd8E\x01\xc2\xc3W\xa8\xad\xa6...'
->>> signa = PKCS1_v1_5.new(pr).sign(h)
->>> PKCS1_v1_5.new(pu).verify(h, signa)
-True
->>> PKCS1_v1_5.new(pu).verify(h, bytes.fromhex(signa.hex()))
-True
->>> signa.hex()
-'1a2d1ffd763f231e8721592fee2...'
-'''
+# Signature manipulation for reference:
+
+# >>> pr = RSA.generate(2048)
+# >>> pu = pr.publickey()
+# >>> h = SHA.new(b'gc10')
+# >>> PKCS1_v1_5.new(pr).sign(h)
+# b'\x1a-\x1f\xfdv?#\x1e\x87!Y/\xee+\x18l\xbe\xd8E\x01\xc2\xc3W\xa8\xad\xa6...'
+# >>> signa = PKCS1_v1_5.new(pr).sign(h)
+# >>> PKCS1_v1_5.new(pu).verify(h, signa)
+# True
+# >>> PKCS1_v1_5.new(pu).verify(h, bytes.fromhex(signa.hex()))
+# True
+# >>> signa.hex()
+# '1a2d1ffd763f231e8721592fee2...'

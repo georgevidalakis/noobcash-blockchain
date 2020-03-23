@@ -1,3 +1,7 @@
+'''Transaction Output (utxo). Contains "unique" transaction ID
+(`hexdigest()`) `transaction_id`, RSA public key of the receiver
+`receiver_public_key` and amount `amount` she receives.'''
+
 from noobcash.helpers import pubk_from_dict, pubk_to_dict
 
 class TransactionOutput:
@@ -23,11 +27,11 @@ class TransactionOutput:
         self.amount = amount
 
     @classmethod
-    def from_dict(cls, transaction_output: TransactionOutput):
+    def from_dict(cls, transaction_output: dict):
         '''Constructor to be used when receiving a transaction.
-        
+
         Arguments:
-        
+
         `transaction_output`: `dict` directly from `to_dict()` send
         by other node.'''
 

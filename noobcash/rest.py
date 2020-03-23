@@ -1,19 +1,11 @@
-import requests
-from flask import Flask, jsonify, request, render_template
+'''Script that defines API and runs app.'''
+
+# import requests
+from flask import Flask, jsonify, request#, render_template
 
 from noobcash.node import Node
+from noobcash.helpers import pubk_to_key
 #from flask_cors import CORS
-
-import time
-
-'''
-import block
-import node
-import blockchain
-import wallet
-import transaction
-import wallet
-'''
 
 app = Flask(__name__)
 
@@ -21,63 +13,100 @@ app = Flask(__name__)
 
 @app.route('/node', methods=['POST'])
 def first_contact():
+    '''Bootstrap: Respond to first contact.'''
     wallet_dict = request.body
-    first_contact_dict = node.register_node_to_ring(wallet_dict=wallet_dict)
+    first_contact_dict = NODE.register_node_to_ring(wallet_dict=wallet_dict)
     return jsonify(first_contact_dict), 200
 
 @app.route('/wallets', methods=['POST'])
 def get_wallets():
+    '''Node:  Receive wallets from bootstrap.'''
     wallet_dict = request.body
-    node.receive_wallets(wallet_dict=wallet_dict)
+    NODE.receive_wallets(wallet_dict=wallet_dict)
     return jsonify(None), 200
 
 @app.route('/transaction', methods=['POST'])
 def receive_transaction():
+    '''Receive transaction.'''
     transaction_dict = request.body
-    node.receive_transaction(transaction=transaction_dict)
+    NODE.receive_transaction(transaction=transaction_dict)
     return jsonify(None), 200
 
 @app.route('/mined_block', methods=['POST'])
 def handle_miner():
+    '''Miner process sent a block.'''
     block_dict = request.body
-    node.check_my_mined_block(block_dict=block_dict)
+    NODE.check_my_mined_block(block_dict=block_dict)
     return jsonify(None), 200
 
 @app.route('/block', methods=['POST'])
 def receive_block():
+    '''Another node sent a block.'''
     block_dict = request.body
-    node.receive_block(block_dict=block_dict)
+    NODE.receive_block(block_dict=block_dict)
     return jsonify(None), 200
 
 @app.route('/length', methods=['GET'])
 def send_blockchain_length():
-    return len(node.blockchain), 200
+    '''Return blockchain length.'''
+    return len(NODE.blockchain), 200
 
 @app.route('/blockchain', methods=['GET'])
 def send_blockchain():
-    blockchain_dict = node.blockchain.to_dict()
+    '''Send blockchain.'''
+    blockchain_dict = NODE.blockchain.to_dict()
     return jsonify(blockchain_dict), 200
+
+@app.route('/balance', methods=['GET'])
+def balance():
+    '''Return balance of node.'''
+    return jsonify(NODE.my_wallet().balance), 200
+
+@app.route('/view', methods=['GET'])
+def view():
+    '''Return human readable format (`sender`, `receiver`, `amount`)
+    of every transacion in the last block of the blockchain.'''
+    last_block = NODE.blockchain.chain[-1]
+    print(len(last_block.list_of_transactions))
+    human_readable = dict()
+    for transaction in last_block.list_of_transactions:
+        if isinstance(transaction.sender_pubk, int):
+            # genesis block
+            human_readable.setdefault('transactions', []).append(
+                dict(sender='Genesis', receiver='0',
+                     amount=sum([to.amount for to in transaction.transaction_outputs]))
+            )
+        else:
+            human_readable.setdefault('transactions', []).append(
+                dict(sender=NODE.pubk2ind[pubk_to_key(transaction.sender_pubk)],
+                     receiver=NODE.pubk2ind[pubk_to_key(transaction.receiver_pubk)],
+                     amount=sum([to.amount for to in transaction.transaction_outputs]))
+            )
+    return jsonify(human_readable), 200
 
 # run it once for every node
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
 
-    parser = ArgumentParser()
-    parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
-    parser.add_argument('-b', '--bootstrap', default=False, type=bool,
-                        help='whether this node is the bootstrap')
-    parser.add_argument('-c', '--capacity', default=10, type=int,
-                        help='number of transactions in a block')
-    parser.add_argument('-n', '--nodes', default=5, type=int, help='number of nodes in the network')
-    parser.add_argument('-d', '--difficulty', default=3, type=int, help='difficulty of mining')
-    parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
+    PARSER = ArgumentParser()
+    PARSER.add_argument('-p', '--port', default=5000, type=int, required=False,
+                        help='port to listen on')
+    PARSER.add_argument('-b', '--bootstrap', default=False, action='store_true',
+                        required=False, help='whether this node is bootstrap')
+    PARSER.add_argument('-c', '--capacity', default=10, type=int,
+                        required=False, help='number of transactions in a block')
+    PARSER.add_argument('-n', '--nodes', default=5, type=int, required=False,
+                        help='number of nodes in the network')
+    PARSER.add_argument('-d', '--difficulty', default=3, type=int, required=False,
+                        help='difficulty of mining')
+    PARSER.add_argument('-a', '--bootstrap_address', default='', type=str, required=False,
+                        help='Bootstrap\'s ip+port')
 
+    ARGS = PARSER.parse_args()
+    PORT = ARGS.port
 
-    args = parser.parse_args()
-    port = args.port
+    # NOTE: init bootstrap before others
+    NODE = Node('', 5, 3, PORT, 10, True)
 
-    node = Node('', 5, 3, port, 10, False)
-
-
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=PORT)
