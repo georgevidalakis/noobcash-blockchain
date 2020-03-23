@@ -5,10 +5,10 @@ of the node, `utxos` as a dict of its unspent transactions and `balance`
 the sum of its available money.'''
 
 import copy
+import subprocess
 
 from Crypto.PublicKey import RSA
 
-from requests import get
 from wrapt import synchronized
 
 from noobcash.transaction_output import TransactionOutput
@@ -35,7 +35,8 @@ class Wallet:
             self.private_key = RSA.generate(2048)
             self.public_key = self.private_key.publickey() # n, e
             # NOTE: added port into address
-            self.address = f'{get("https://api.ipify.org").text}:{port}'
+            ip = subprocess.check_output(["hostname", "-I"]).decode().split()[0]
+            self.address = f'{ip}:{port}'
         self.utxos = dict() # key: transaction_id.hex_digest, value: utxo
         self.balance = 0 # Utxos and balance may be inconsistent (lock)
 

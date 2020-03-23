@@ -69,7 +69,8 @@ class Node:
             self.nodes = nodes
             self.blockchain = self.init_bootstrap_blockchain()
         else:
-            self.my_id, self.blockchain = self.first_contact_data(bootstrap_address, wallet)
+            self.bootstrap_address = bootstrap_address
+            self.my_id, self.blockchain = self.first_contact_data(self.bootstrap_address, wallet)
             # information for every node (its address (ip:port),
             # its public key, its balance, its utxos)
             self.ring = {
@@ -118,16 +119,12 @@ class Node:
 
         # we are contacting the bootstrap
         # loop until we get proper chain
-        while True:
-            response = json.loads(http.request('POST', f'{bootstrap_address}/node',
-                                               headers={'Content-Type': 'application/json'},
-                                               body=json.dumps(myinfo)).body)
-            # blockchain in response is (ordered) list of blocks
-            blockchain = Blockchain.from_dict(response['blockchain'])
-            if self.valid_chain(blockchain):
-                break
+        response = json.loads(http.request('POST', f'{bootstrap_address}/node',
+                                            headers={'Content-Type': 'application/json'},
+                                            body=json.dumps(myinfo)).data)
 
-        return response['id'], blockchain
+        # blockchain in response is (ordered) list of blocks
+        return response['id'], Blockchain.from_dict(response['blockchain'])
 
     def generate_wallet(self, port: int):
         '''Generate this node's wallet.
@@ -158,7 +155,7 @@ class Node:
         node_wallet = Wallet.from_dict(wallet_dict)
         # if node has already contacted before to register
         # do not produce new index, ...
-        index = self.pubk2ind.get(pubk_to_key(node_wallet.public_key), len(self.pubk2ind) + 1)
+        index = self.pubk2ind.get(pubk_to_key(node_wallet.public_key), len(self.pubk2ind))
         self.pubk2ind[pubk_to_key(node_wallet.public_key)] = index
         self.ring[index] = node_wallet
 
@@ -214,11 +211,18 @@ class Node:
         and `Wallet` `dicts` as values.'''
 
         self.ring = {
-            idx: Wallet.from_dict(wallet_dict[idx]) \
-                if idx != self.my_id else self.my_wallet() \
+            int(idx): Wallet.from_dict(wallet_dict[idx]) \
+                if int(idx) != self.my_id else self.my_wallet() \
                 for idx in wallet_dict
         }
+        self.pubk2ind = {
+            pubk_to_key(self.ring[idx].public_key): idx for idx in self.ring
+        }
         self.ring_bak = object_dict_deepcopy(self.ring)
+
+        while not self.valid_chain(self.blockchain):
+            self.my_id, self.blockchain = self.first_contact_data(self.bootstrap_address,
+                                                                  self.my_wallet())
 
         # process transactions received before wallets
         self.process_transactions()
@@ -315,7 +319,7 @@ class Node:
         `True` if valid.'''
 
         # signature
-        if not PKCS1_v1_5.new(transaction.sender_pubk).verify(transaction.make_hash(is_str=False),
+        if not PKCS1_v1_5.new(transaction.sender_pubk).verify(transaction.make_hash(as_str=False),
                                                               transaction.signature):
             return False
 
@@ -480,13 +484,13 @@ class Node:
 
 
         # add genesis transaction
-        self.add_utxos(blockchain.chain[0].list_of_transactions[0]\
-                       .transaction_outputs, new_ring)
+        genesis_tra = blockchain.chain[0].list_of_transactions[0]
+        self.add_utxos(genesis_tra.transaction_outputs, new_ring)
 
         for block in blockchain.chain[1:]:
             if not self.valid_proof(block, new_ring):
                 return False
-        for k in self.ring_bak:
+        for k in self.ring:
             self.ring_bak[k] = new_ring[k].deepcopy()
             self.ring[k] = new_ring[k].deepcopy()
 
@@ -506,10 +510,11 @@ class Node:
         http = urllib3.PoolManager()
         response = http.request('GET', url, headers={'Accept': 'application/json'})
 
-        if response.status != 200 or 'blockchain_len' not in response.body:
+        if response.status != 200:
             return 0
 
-        blockchain_len = json.loads(response.body)
+        # response supposed to be a number
+        blockchain_len = json.loads(response.data)
 
         if not isinstance(blockchain_len, int):
             return 0
@@ -599,7 +604,7 @@ class Node:
         http = urllib3.PoolManager()
         response = http.request('GET', url, headers={'Accept': 'application/json'})
 
-        blockchain = Blockchain.from_dict(json.loads(response.body))
+        blockchain = Blockchain.from_dict(json.loads(response.data))
 
         # renews both rings
         if not self.valid_chain(blockchain):

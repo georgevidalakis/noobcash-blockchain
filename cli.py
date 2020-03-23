@@ -88,7 +88,7 @@ if BOOTSTRAP:
     while not json.loads(HTTP.request('GET', f'{URL}/ring',
                                       headers={'Accept': 'application/json'}).data):
         print('Waiting network establishment...')
-        time.sleep(1)
+        time.sleep(3)
     print('Network established!')
 
 # actual cli loop

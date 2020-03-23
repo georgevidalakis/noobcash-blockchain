@@ -33,7 +33,7 @@ def pubk_from_dict(pubk_dict):
 
     try:
         return RSA.construct((pubk_dict['n'], pubk_dict['e']))
-    except AttributeError:
+    except TypeError:
         return pubk_dict
 
 def pubk_to_key(pubk):
