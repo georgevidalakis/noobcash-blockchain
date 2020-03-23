@@ -1,6 +1,7 @@
 '''Cryptocurrency transaction handler of a node in the network.'''
 
 import os
+import sys
 import signal
 import json
 from typing import Union
@@ -16,7 +17,7 @@ from noobcash.block import Block
 from noobcash.wallet import Wallet
 from noobcash.transaction import Transaction
 from noobcash.blockchain import Blockchain
-from noobcash.helpers import pubk_to_key, wallet_dict_deepcopy
+from noobcash.helpers import pubk_to_key, object_dict_deepcopy
 
 
 NUM_OF_THREADS = 3
@@ -62,7 +63,7 @@ class Node:
             self.ring = {
                 self.my_id: wallet
             }
-            self.ring_bak = wallet_dict_deepcopy(self.ring)
+            self.ring_bak = object_dict_deepcopy(self.ring)
             # public key to index correspondence
             self.pubk2ind = {pubk_to_key(self.my_wallet().public_key): self.my_id}
             self.nodes = nodes
@@ -120,7 +121,7 @@ class Node:
         while True:
             response = json.loads(http.request('POST', f'{bootstrap_address}/node',
                                                headers={'Content-Type': 'application/json'},
-                                               body=myinfo).body)
+                                               body=json.dumps(myinfo)).body)
             # blockchain in response is (ordered) list of blocks
             blockchain = Blockchain.from_dict(response['blockchain'])
             if self.valid_chain(blockchain):
@@ -161,16 +162,20 @@ class Node:
         self.pubk2ind[pubk_to_key(node_wallet.public_key)] = index
         self.ring[index] = node_wallet
 
-        if len(self.ring) == self.nodes:
-            # when all wallets have been sent, broadcast
-            self.broadcast_wallets()
-
         info = dict(
             blockchain=self.blockchain.to_dict(),
             id=index
         )
 
         return info
+
+    def broadcast_initial_transactions(self):
+        '''Bootstrap sends 100 NBC coins to every node in the network.'''
+
+        for k in self.ring:
+            if k != self.my_id:
+                self.create_transaction(receiver_idx=k, amount=100)
+
 
     def broadcast_wallets(self):
         '''As the bootstrap, broadcast the wallet of every node
@@ -181,7 +186,7 @@ class Node:
         * `True` if all nodes responded with a 200 code.'''
 
         # renew backup
-        self.ring_bak = wallet_dict_deepcopy(self.ring)
+        self.ring_bak = object_dict_deepcopy(self.ring)
 
         broadcast_message = {
             k: self.ring[k].to_dict() for k in self.ring
@@ -213,7 +218,7 @@ class Node:
                 if idx != self.my_id else self.my_wallet() \
                 for idx in wallet_dict
         }
-        self.ring_bak = wallet_dict_deepcopy(self.ring)
+        self.ring_bak = object_dict_deepcopy(self.ring)
 
         # process transactions received before wallets
         self.process_transactions()
@@ -271,7 +276,7 @@ class Node:
         http = urllib3.PoolManager()
         response = http.request('POST', url,
                                 headers={'Content-Type': 'application/json'},
-                                body=dict_to_broadcast)
+                                body=json.dumps(dict_to_broadcast))
 
         return response.status == 200
 
@@ -352,17 +357,14 @@ class Node:
         block = Block(self.blockchain)
         for i in range(self.capacity):
             block.add_transaction(self.transaction_queue[i])
-        while True:
-            # sampling with replacement -> same odds if running concurrently
-            block.nonce = np.random.randint(2 ** 32)
-            if block.validate_hash(self.difficulty):
-                break
+        block.mine(self.difficulty)
 
         self.send_dict_to_address((block.to_dict(),
-                                   f'{self.my_wallet().address}/mined_block'))
+                                   f'127.0.0.1:{self.my_wallet().address.split(":")[-1]}' + \
+                                       '/mined_block'))
 
         # su-su-suicide
-        os._exit(0)
+        sys.exit(0)
 
     def mine_block(self):
         '''High-level function to call when being ready
@@ -446,7 +448,7 @@ class Node:
 
         if not block.validate_hash(self.difficulty):
             return False
-        ring_bak_bak = wallet_dict_deepcopy(ring)
+        ring_bak_bak = object_dict_deepcopy(ring)
 
         try:
             for tra in block.list_of_transactions:

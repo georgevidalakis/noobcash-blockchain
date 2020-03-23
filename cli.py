@@ -5,9 +5,15 @@ Usage:
 python cli.py [-ip HOST] [-p PORT] [-b]'''
 
 import argparse
-# import os
+import subprocess
+import os
+import sys
+import signal
+import time
 import json
 import urllib3
+
+from flask import jsonify
 
 def nbc_cmd(string):
     '''Turn `string` purple.'''
@@ -20,6 +26,19 @@ def error(string):
 def prompt(string):
     '''Turn `string` green.'''
     return f'\033[92m{string}\033[00m'
+
+def interrupt_handler(signal_received, frame):
+    '''Handle `Ctrl-C` and `Ctrl-D`.'''
+
+    try:
+        APP
+        print('Terminating Flask app.')
+        os.system(f'kill $(lsof -t -i:{PORT})')
+    except NameError:
+        pass
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, interrupt_handler)
 
 ### parse arguments at startup
 
@@ -54,21 +73,23 @@ CMD_NODE = 'python noobcash/rest.py' + \
            f' -c {CAPACITY} -n {N} -d {DIFFICULTY}' + \
            f' -a \'{BOOTSTRAP_URL}\''
 
-# if os.system(cmd_node) != 0:
-#     print(error('Could not start app.'))
-#     exit(42)
-# print(cmd_node)
+# suppress output of flask app
+# with open(os.devnull, 'w') as fp:
+#     APP = subprocess.Popen(CMD_NODE, shell=True, stdout=fp, stderr=fp)
+# time.sleep(2) # wait for app to launch
 
 HTTP = urllib3.PoolManager()
 
 ### if bootstrap, notify app to send wallets and transactions
 
-# if BOOTSTRAP:
-#     # get at /ring returns if every node has been registered
-#     # should broadcast transactions and wallets afterwards
-#     while not json.loads(http.request('GET', f'{URL}/ring',
-#                          headers={'Accept': 'application/json'}).data):
-#         pass
+if BOOTSTRAP:
+    # get at /ring returns if every node has been registered
+    # should broadcast transactions and wallets afterwards
+    while not json.loads(HTTP.request('GET', f'{URL}/ring',
+                                      headers={'Accept': 'application/json'}).data):
+        print('Waiting network establishment...')
+        time.sleep(1)
+    print('Network established!')
 
 # actual cli loop
 
@@ -76,11 +97,27 @@ while True:
     CMD = input(prompt('noobcash') + '> ')
     print()
     if CMD.startswith('t '):
-        _, IDX, AMOUNT = CMD.split()
-        if IDX != str(int(IDX)) or AMOUNT != str(int(AMOUNT)):
+        try:
+            _, IDX, AMOUNT = CMD.split()
+            IDXi = int(IDX)
+            AMOUNTi = int(AMOUNT)
+
+            if str(IDXi) != IDX or str(AMOUNTi) != AMOUNT:
+                print(error('Wrong transaction parameters'))
+            else:
+                transaction = {'receiver_idx': IDXi, 'amount': AMOUNTi}
+                status = HTTP.request('POST', f'{URL}/purchase',
+                                    headers={'Content-Type': 'application/json'},
+                                    body=json.dumps(transaction)).status
+
+                if status == 200:
+                    print(nbc_cmd('Sending ') + AMOUNT + nbc_cmd(f' NBC{"s" if int(AMOUNT) > 1 else ""} to node ') + IDX)
+                else:
+                    print(error('Unsuccessful transaction. Aborting...'))
+                    break
+        except:
             print(error('Wrong transaction parameters'))
-        else:
-            print(nbc_cmd(f'Sending {AMOUNT} NBC{"s" if int(AMOUNT) > 1 else ""} to node {IDX}'))
+
 
     elif CMD == 'view':
         print(nbc_cmd('Last block transactions:\n'))
@@ -108,3 +145,5 @@ while True:
         print(error(f'Non-existent command: {CMD}. Try typing `help`.'))
 
     print()
+
+os.system(f'kill $(lsof -t -i:{PORT})')

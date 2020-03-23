@@ -12,7 +12,7 @@ from requests import get
 from wrapt import synchronized
 
 from noobcash.transaction_output import TransactionOutput
-from noobcash.helpers import pubk_to_dict, pubk_from_dict
+from noobcash.helpers import pubk_to_dict, pubk_from_dict, object_dict_deepcopy
 
 class Wallet:
     '''Wallet of cryptocurrency of a node in a network.
@@ -76,7 +76,7 @@ class Wallet:
 
         inst = Wallet(0, this_node=False)
         inst.balance = self.balance
-        inst.utxos = copy.deepcopy(self.utxos)
+        inst.utxos = object_dict_deepcopy(self.utxos)
         try:
             inst.private_key = RSA.RsaKey(n=self.private_key.n,
                                           e=self.private_key.e,
@@ -119,7 +119,7 @@ class Wallet:
         unspent transaction to be removed.'''
 
         for utxo_id in utxo_ids:
-            self.balance -= self.utxos[utxo_id]
+            self.balance -= self.utxos[utxo_id].amount
             del self.utxos[utxo_id]
 
     def filtered_sum(self, utxo_ids): # NOTE: transfered from NodeInfo

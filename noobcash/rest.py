@@ -1,6 +1,6 @@
 '''Script that defines API and runs app.'''
 
-# import requests
+import json
 from flask import Flask, jsonify, request#, render_template
 
 from noobcash.node import Node
@@ -14,35 +14,35 @@ app = Flask(__name__)
 @app.route('/node', methods=['POST'])
 def first_contact():
     '''Bootstrap: Respond to first contact.'''
-    wallet_dict = request.body
+    wallet_dict = json.loads(request.data)
     first_contact_dict = NODE.register_node_to_ring(wallet_dict=wallet_dict)
     return jsonify(first_contact_dict), 200
 
 @app.route('/wallets', methods=['POST'])
 def get_wallets():
     '''Node:  Receive wallets from bootstrap.'''
-    wallet_dict = request.body
+    wallet_dict = json.loads(request.data)
     NODE.receive_wallets(wallet_dict=wallet_dict)
     return jsonify(None), 200
 
 @app.route('/transaction', methods=['POST'])
 def receive_transaction():
     '''Receive transaction.'''
-    transaction_dict = request.body
+    transaction_dict = json.loads(request.data)
     NODE.receive_transaction(transaction=transaction_dict)
     return jsonify(None), 200
 
 @app.route('/mined_block', methods=['POST'])
 def handle_miner():
     '''Miner process sent a block.'''
-    block_dict = request.body
+    block_dict = json.loads(request.data)
     NODE.check_my_mined_block(block_dict=block_dict)
     return jsonify(None), 200
 
 @app.route('/block', methods=['POST'])
 def receive_block():
     '''Another node sent a block.'''
-    block_dict = request.body
+    block_dict = json.loads(request.data)
     NODE.receive_block(block_dict=block_dict)
     return jsonify(None), 200
 
@@ -80,10 +80,33 @@ def view():
             human_readable.setdefault('transactions', []).append(
                 dict(sender=NODE.pubk2ind[pubk_to_key(transaction.sender_pubk)],
                      receiver=NODE.pubk2ind[pubk_to_key(transaction.receiver_pubk)],
-                     amount=sum([to.amount for to in transaction.transaction_outputs]))
+                     amount=transaction.transaction_outputs[0].amount)
             )
     return jsonify(human_readable), 200
 
+@app.route('/ring', methods=['GET'])
+def broadcast_info():
+    '''Notify bootstrap whether all nodes in the
+    network have been registered. Also, broadcasts
+    wallets and initial transactions.
+
+    Returns:
+
+    * `True` if all nodes registered, else `False`.'''
+
+    if NODE.nodes == len(NODE.ring):
+        NODE.broadcast_wallets()
+        NODE.broadcast_initial_transactions()
+        return jsonify(True), 200
+    return jsonify(False), 200
+
+@app.route('/purchase', methods=['POST'])
+def make_transaction():
+    req_dict = json.loads(request.data)
+    receiver_idx = req_dict['receiver_idx']
+    amount = req_dict['amount']
+    NODE.create_transaction(receiver_idx=receiver_idx, amount=amount)
+    return jsonify(None), 200
 # run it once for every node
 
 if __name__ == '__main__':
@@ -105,8 +128,14 @@ if __name__ == '__main__':
 
     ARGS = PARSER.parse_args()
     PORT = ARGS.port
+    IS_BOOTSTRAP = ARGS.bootstrap
+    CAPACITY = ARGS.capacity
+    N_NODES = ARGS.nodes
+    DIFFICULTY = ARGS.difficulty
+    BOOTSTRAP_ADDRESS = ARGS.bootstrap_address
 
     # NOTE: init bootstrap before others
-    NODE = Node('', 5, 3, PORT, 10, True)
+    NODE = Node(bootstrap_address=BOOTSTRAP_ADDRESS, capacity=CAPACITY, difficulty=DIFFICULTY,
+                port=PORT, nodes=N_NODES, is_bootstrap=IS_BOOTSTRAP)
 
     app.run(host='0.0.0.0', port=PORT)

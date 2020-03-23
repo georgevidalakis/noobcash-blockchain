@@ -32,7 +32,7 @@ def pubk_from_dict(pubk_dict):
     * RSA public key.'''
 
     try:
-        return RSA.construct(pubk_dict['n'], pubk_dict['e'])
+        return RSA.construct((pubk_dict['n'], pubk_dict['e']))
     except AttributeError:
         return pubk_dict
 
@@ -77,14 +77,16 @@ def sign_from_dict(signature_dict):
 
     return bytes.fromhex(signature_dict)
 
-def wallet_dict_deepcopy(ring):
-    '''Deepcopy of whole `dict` with `Wallet`s.
+def object_dict_deepcopy(dct):
+    '''Deepcopy of whole `dict` with `Wallet`s,
+    `TransactionOutput`s, etc.
 
     Returns:
 
-    * Deepcopied `dict` of `Wallet`s.'''
+    * Deepcopied `dict`.'''
 
-    new_ring = {}
-    for k in ring:
-        new_ring[k] = ring[k].deepcopy()
-    return new_ring
+    new_dct = {}
+    for k in dct:
+        new_dct[k] = dct[k].deepcopy()
+    return new_dct
+

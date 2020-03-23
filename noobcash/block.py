@@ -2,6 +2,7 @@ from noobcash.transaction import Transaction
 
 import time
 import json
+import numpy as np
 from Crypto.Hash import SHA
 
 class Block:
@@ -25,6 +26,7 @@ class Block:
         # NOTE: hashes are kept as (hex) strings since
         # their only purposes are comparison and mining
 
+        self._hash_bits = SHA.digest_size * 8 # bytes -> bits
         if blockchain is None:
             # if blockchain is None => GENESIS block
             assert(genesis_transaction is not None)
@@ -35,7 +37,7 @@ class Block:
             self.hash = '0'
         else:
             self.index = len(blockchain)
-            self.previous_hash = blockchain.chain.get_block_hash(-1)
+            self.previous_hash = blockchain.get_block_hash(-1)
             self.list_of_transactions = []
 
         self.timestamp = time.time()
@@ -139,6 +141,13 @@ class Block:
 
         return len(self.list_of_transactions)
 
-    def validate_hash(self, difficulty: int):
+    def mine(self, difficulty: int):
         ''''''
-        return int(self.my_hash(), 16) < 2 ** (32 - difficulty)
+        self.nonce = np.random.randint(2 ** 32)
+        while not self.validate_hash(difficulty):
+            pass
+
+    def validate_hash(self, difficulty: int):
+        '''Return whether nonce constitutes Proof-of-work.'''
+
+        return int(self.my_hash(), 16) < 2 ** (self._hash_bits - difficulty)

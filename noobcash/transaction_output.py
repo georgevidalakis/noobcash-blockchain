@@ -2,6 +2,8 @@
 (`hexdigest()`) `transaction_id`, RSA public key of the receiver
 `receiver_public_key` and amount `amount` she receives.'''
 
+from Crypto.PublicKey import RSA
+
 from noobcash.helpers import pubk_from_dict, pubk_to_dict
 
 class TransactionOutput:
@@ -25,6 +27,18 @@ class TransactionOutput:
         self.transaction_id = transaction_id
         self.receiver_public_key = receiver_public_key
         self.amount = amount
+
+    def deepcopy(self):
+        '''Deepcopy this unspent transaction (copy.deepcopy raises Error).
+
+        Returns:
+
+        * Replica of this object wrt to values, not memory location etc.'''
+
+        inst = TransactionOutput(self.transaction_id, 0, self.amount)
+        inst.receiver_public_key = RSA.RsaKey(n=self.receiver_public_key.n,
+                                              e=self.receiver_public_key.e)
+        return inst
 
     @classmethod
     def from_dict(cls, transaction_output: dict):
