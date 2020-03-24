@@ -233,6 +233,22 @@ class Node:
         # process transactions received before wallets
         self.process_transactions()
 
+    def send_bogus_transaction(self, receiver_idx: int, amount: int):
+        '''Create, broadcast bogus transaction.
+        NOTE: sender is this node.
+
+        Arguments:
+
+        * `receiver_idx`: receiver index in `ring` (chosen because
+        of cli).
+
+        * `amount`: (`int`) NBCs transfered.'''
+
+        transaction = Transaction(recipient_pubk=self.ring[receiver_idx].public_key,
+                                  value=amount, my_wallet=None)
+        self.broadcast_transaction(transaction)
+
+
     @wrapt.synchronized(TRANSACTION_LOCK)
     def create_transaction(self, receiver_idx: int, amount: int):
         '''Create, broadcast transaction, update wallets and queue.
@@ -243,7 +259,11 @@ class Node:
         * `receiver_idx`: receiver index in `ring` (chosen because
         of cli).
 
-        * `amount`: (`int`) NBCs transfered.'''
+        * `amount`: (`int`) NBCs transfered.
+
+        Returns:
+
+        * `True` is transaction succesfully created, else `False`.'''
 
         receiver_wallet = self.ring[receiver_idx]
         try:
@@ -251,7 +271,7 @@ class Node:
             transaction = Transaction(recipient_pubk=receiver_wallet.public_key,
                                       value=amount, my_wallet=self.my_wallet())
         except TypeError: # Reject transaction, not enough cash
-            return
+            return False
 
         self.broadcast_transaction(transaction)
         self.add_utxos(transaction.transaction_outputs, self.ring)
@@ -259,6 +279,8 @@ class Node:
 
         if len(self.transaction_queue) >= self.capacity:
             self.mine_block()
+        
+        return True
 
     def add_utxos(self, transaction_outputs: list, ring: dict):
         '''Add unspent transactions to respective wallets.

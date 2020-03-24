@@ -2,7 +2,8 @@
 
 Usage:
 
-python cli.py [-c CAPACITY] [-n NODES] [-d DIFFICULTY] [-a BOOTSTRAP_ADDRESS] [-p PORT] [-b]'''
+python cli.py [-c CAPACITY] [-n NODES] [-d DIFFICULTY] [-a BOOTSTRAP_ADDRESS]
+              [-p PORT] [-b] [-s SCRIPT]'''
 
 import argparse
 import subprocess
@@ -36,6 +37,10 @@ def interrupt_handler(signal_received, frame):
         pass
     sys.exit(0)
 
+def get_row(row):
+    idx, amount = row.split()
+    return int(idx[2:]), int(amount)
+
 signal.signal(signal.SIGINT, interrupt_handler)
 
 ### parse arguments at startup
@@ -51,6 +56,7 @@ PARSER.add_argument('-n', '--nodes', default=5, type=int, help='number of nodes 
 PARSER.add_argument('-d', '--difficulty', default=3, type=int, help='difficulty of mining')
 PARSER.add_argument('-a', '--bootstrap_address', default='', type=str,
                     help='Bootstrap\'s ip+port')
+PARSER.add_argument('-s', '--script', type=str, help='filename of transactions to execute')
 
 ARGS = PARSER.parse_args()
 
@@ -102,6 +108,21 @@ else:
         print(WAIT_MSG)
         time.sleep(3)
 
+if ARGS.script is not None:
+    with open(ARGS.script, 'r') as transactions:
+        line = transactions.readline()
+        while line:
+            idx, amount = get_row(line)
+            transaction = {'receiver_idx': idx, 'amount': amount}
+            status = HTTP.request('POST', f'{URL}/black_hat_purchase',
+                                  headers={'Content-Type': 'application/json'},
+                                  body=json.dumps(transaction)).status
+            if status != 200:
+                print(error('Error while executing script!'))
+
+            transactions.readline()
+
+
 # actual cli loop
 
 HELP = '''This is the NOOBCASH command line interface.
@@ -147,11 +168,11 @@ while True:
                 print(error('Wrong transaction parameters'))
             else:
                 TRANSACTION = {'receiver_idx': IDXI, 'amount': AMOUNTI}
-                STATUS = HTTP.request('POST', f'{URL}/purchase',
-                                      headers={'Content-Type': 'application/json'},
-                                      body=json.dumps(TRANSACTION)).status
+                RESPONSE = HTTP.request('POST', f'{URL}/purchase',
+                                        headers={'Content-Type': 'application/json'},
+                                        body=json.dumps(TRANSACTION))
 
-                if STATUS == 200:
+                if RESPONSE.status == 200 and json.loads(RESPONSE.data):
                     print(nbc_cmd('Sending ') + AMOUNT + \
                         nbc_cmd(f' NBC{"s" if AMOUNTI > 1 else ""} to node ') + IDX)
                 else:

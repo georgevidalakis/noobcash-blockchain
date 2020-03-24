@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request#, render_template
 
 from noobcash.node import Node
 from noobcash.helpers import pubk_to_key
+from noobcash.transaction import Transaction
 #from flask_cors import CORS
 
 app = Flask(__name__)
@@ -105,8 +106,21 @@ def create_transaction():
     req_dict = json.loads(request.data)
     receiver_idx = req_dict['receiver_idx']
     amount = req_dict['amount']
-    NODE.create_transaction(receiver_idx=receiver_idx, amount=amount)
-    return jsonify(None), 200
+    valid = NODE.create_transaction(receiver_idx=receiver_idx, amount=amount)
+    return jsonify(valid), 200
+
+@app.route('/black_hat_purchase', methods=['POST'])
+def scripted_transaction():
+    '''Create transaction ordered from script.'''
+    req_dict = json.loads(request.data)
+    receiver_idx = req_dict['receiver_idx']
+    amount = req_dict['amount']
+    valid = NODE.create_transaction(receiver_idx=receiver_idx, amount=amount)
+    if not valid:
+        NODE.send_bogus_transaction(receiver_idx=receiver_idx, amount=amount)
+
+    return jsonify(valid), 200
+
 
 @app.route('/id', methods=['GET'])
 def get_id():
