@@ -1,9 +1,14 @@
-from noobcash.transaction import Transaction
+'''Block of a blockchain. Contains integer `index`,
+`previous_hash` of previous in the blockchain block and `hash` as strings,
+integer `nonce` when it is mined, list `list_of_transactions` of "valid"
+Transaction objects and `timestamp` of creation.'''
 
 import time
 import json
 import numpy as np
 from Crypto.Hash import SHA
+
+from noobcash.transaction import Transaction
 
 class Block:
     '''Block of a blockchain. Contains integer `index`,
@@ -29,7 +34,7 @@ class Block:
         self._hash_bits = SHA.digest_size * 8 # bytes -> bits
         if blockchain is None:
             # if blockchain is None => GENESIS block
-            assert(genesis_transaction is not None)
+            assert genesis_transaction is not None
             self.index = 0
             self.previous_hash = '1'
             self.nonce = 0
@@ -83,7 +88,7 @@ class Block:
                 t.to_dict() for t in self.list_of_transactions
             ]
         ))
-    
+
     def to_dict(self):
         '''Transform attributes to `dict` for
         nodes to send as mined of as part of blockchain.
@@ -125,7 +130,7 @@ class Block:
 
         return len(self.list_of_transactions)
 
-    def add_transaction(self, transaction: Transaction):
+    def add_transactions(self, transactions: list):
         '''Add VALIDATED transaction to block.
 
         Arguments:
@@ -137,17 +142,37 @@ class Block:
         * `int` number of transactions after insertion to
         compare online with capacity.'''
 
-        self.list_of_transactions.append(transaction)
+        self.list_of_transactions.extend(transactions)
 
         return len(self.list_of_transactions)
 
     def mine(self, difficulty: int):
-        ''''''
-        self.nonce = np.random.randint(2 ** 32)
-        while not self.validate_hash(difficulty):
-            pass
+        '''Set `nonce` for Proof-of-work.
+
+        Arguments:
+
+        * `difficulty`: the difficulty of mining.'''
+
+        while True:
+            self.nonce = np.random.randint(2 ** 32)
+            if self.validate_hash(difficulty):
+                break
 
     def validate_hash(self, difficulty: int):
         '''Return whether nonce constitutes Proof-of-work.'''
 
         return int(self.my_hash(), 16) < 2 ** (self._hash_bits - difficulty)
+
+    def __str__(self):
+        '''Used for debugging, returns a `json.dumps`'d `dict`.'''
+
+        result = dict(
+            index=self.index,
+            list_of_transactions=[
+                json.loads(str(t)) for t in self.list_of_transactions
+            ],
+            timestamp=self.timestamp,
+            hash=self.hash,
+            prev=self.previous_hash
+        )
+        return json.dumps(result, indent=4)

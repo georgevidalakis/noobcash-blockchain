@@ -2,6 +2,8 @@
 (`hexdigest()`) `transaction_id`, RSA public key of the receiver
 `receiver_public_key` and amount `amount` she receives.'''
 
+import json
+
 from Crypto.PublicKey import RSA
 
 from noobcash.helpers import pubk_from_dict, pubk_to_dict
@@ -67,3 +69,12 @@ class TransactionOutput:
             receiver_pubk=pubk_to_dict(self.receiver_public_key),
             amount=self.amount
         )
+
+    def __str__(self):
+        ''''''
+
+        result = dict(
+            amount=self.amount
+        )
+
+        return json.dumps(result, indent=4)

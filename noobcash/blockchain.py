@@ -1,6 +1,11 @@
-from noobcash.block import Block
+'''List of validated blocks with Proof-of-Work.
+Contains list of `Block` objects `chain`.'''
+
+import json
 
 from ordered_set import OrderedSet
+
+from noobcash.block import Block
 
 class Blockchain:
     '''List of validated blocks with Proof-of-Work.
@@ -47,13 +52,22 @@ class Blockchain:
         (NOTE: not validated yet).'''
 
         inst = cls()
-        
-        for b in blockchain['chain']:
-            inst.append_block(Block.from_dict(b))
+
+        for blc in blockchain['chain']:
+            inst.append_block(Block.from_dict(blc))
 
         return inst
 
     def get_block_hash(self, i):
+        '''Return hash of block.
+
+        Arguments:
+
+        * `i`: Index of block.
+
+        Returns:
+
+        * Hash (string) of block.'''
         return self.chain[i].hash
 
     def append_block(self, block: Block):
@@ -61,14 +75,27 @@ class Blockchain:
         self.hashes_set.add(block.hash)
 
     def __len__(self):
+        '''Returns number of (validated) blocks.'''
         return len(self.chain)
-    
+
     def set_of_transactions(self):
-        ''''''
+        '''Get all transactions of blockchain in an `OrderedSet`.
+
+        Returns:
+
+        * `OrderedSet` of `Transaction`s.'''
 
         transactions_set = OrderedSet()
-        
+
         for b in self.chain:
             transactions_set.update(b.list_of_transactions)
-        
+
         return transactions_set
+
+    def __str__(self):
+        '''Used for debugging, returns a `json.dumps`'d `dict`.'''
+        return json.dumps(dict(
+            chain=[
+                json.loads(str(b)) for b in self.chain
+            ]
+        ), indent=4)

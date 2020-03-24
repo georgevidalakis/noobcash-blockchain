@@ -72,7 +72,7 @@ class Transaction:
 
     def __hash__(self):
         '''Use ID (assumed unique) for hashing.'''
-        return self.transaction_id
+        return int(self.transaction_id, 16)
 
     @classmethod
     def from_dict(cls, transaction: dict):
@@ -171,7 +171,17 @@ class Transaction:
 
         return PKCS1_v1_5.new(private_key).sign(self.make_hash(as_str=False))
 
+    def __str__(self):
+        '''Used for debugging, returns a `json.dumps`'d `dict`.'''
 
+        result = dict(
+            transaction_inputs=self.transaction_inputs,
+            transaction_outputs=[
+                json.loads(str(to)) for to in self.transaction_outputs
+            ],
+        )
+
+        return json.dumps(result, indent=4)
 
 # Signature manipulation for reference:
 
