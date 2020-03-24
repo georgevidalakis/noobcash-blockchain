@@ -9,7 +9,7 @@ setup(
     version='beta',
     packages=find_packages(),
     scripts=[],
-    url='https://github.com/georgevidalakis/ECE_NTUA_distributed_2019_20',
+    url='https://github.com/georgevidalakis/noobcash-blockchain',
     author='Georgios {Vidal, Chochl}akis',
     install_requires=[],
     extras_require={

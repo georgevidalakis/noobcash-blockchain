@@ -11,7 +11,7 @@
 1. Clone repo:
 
     ```bash
-    $ git clone https://github.com/georgevidalakis/ECE_NTUA_distributed_2019_20 noobcash
+    $ git clone https://github.com/georgevidalakis/noobcash-blockchain noobcash
     $ cd noobcash
     ```
 
