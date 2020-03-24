@@ -30,6 +30,8 @@ def get_wallets():
 def receive_transaction():
     '''Receive transaction.'''
     transaction_dict = json.loads(request.data)
+    transaction_id = Transaction.from_dict(transaction_dict).transaction_id  # TODO: Remove line
+    print(f'\nReceived transaction with id: {transaction_id}.\n')  # TODO: Remove line
     NODE.receive_transaction(transaction=transaction_dict)
     return jsonify(None), 200
 
@@ -163,4 +165,4 @@ if __name__ == '__main__':
     NODE = Node(bootstrap_address=BOOTSTRAP_ADDRESS, capacity=CAPACITY, difficulty=DIFFICULTY,
                 port=PORT, nodes=N_NODES, is_bootstrap=IS_BOOTSTRAP)
 
-    app.run(host='0.0.0.0', port=PORT)
+    app.run(host='0.0.0.0', port=PORT, threaded=False)
