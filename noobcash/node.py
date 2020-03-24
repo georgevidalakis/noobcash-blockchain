@@ -60,6 +60,9 @@ class Node:
 
         self.difficulty = difficulty
 
+        self.nodes = nodes
+
+
         if is_bootstrap:
             self.my_id = 0
             # information for every node (its address (ip:port),
@@ -70,7 +73,6 @@ class Node:
             self.ring_bak = object_dict_deepcopy(self.ring)
             # public key to index correspondence
             self.pubk2ind = {pubk_to_key(self.my_wallet().public_key): self.my_id}
-            self.nodes = nodes
             self.blockchain = self.init_bootstrap_blockchain()
         else:
             self.bootstrap_address = bootstrap_address
@@ -682,6 +684,10 @@ class Node:
             self.kill_miner()
             self.blockchain.append_block(block)
 
+            # logic: removed transactions of block from queue
+            # & update ring wrt transactions never seen before
+            # without adding them to the queue, while preserving
+            # their order with OrderedSet 
             tra_queue_set = OrderedSet(self.transaction_queue.transactions())
             rec_tra_set = OrderedSet(block.list_of_transactions)
 

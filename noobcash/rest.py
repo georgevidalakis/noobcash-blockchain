@@ -111,6 +111,9 @@ def create_transaction():
 @app.route('/id', methods=['GET'])
 def get_id():
     try:
+        if NODE.nodes > len(NODE.ring):
+            # if not everybody is connected, wait!
+            raise AttributeError
         return jsonify(NODE.my_id), 200
     except AttributeError:
         return jsonify(0), 200

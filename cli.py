@@ -2,18 +2,15 @@
 
 Usage:
 
-python cli.py [-ip HOST] [-p PORT] [-b]'''
+python cli.py [-c CAPACITY] [-n NODES] [-d DIFFICULTY] [-a BOOTSTRAP_ADDRESS] [-p PORT] [-b]'''
 
 import argparse
-import subprocess
 import os
 import sys
 import signal
 import time
 import json
 import urllib3
-
-from flask import jsonify
 
 def nbc_cmd(string):
     '''Turn `string` purple.'''
@@ -89,17 +86,46 @@ if BOOTSTRAP:
                                       headers={'Accept': 'application/json'}).data):
         print('Waiting network establishment...')
         time.sleep(3)
-    print('Network established!')
+    print(prompt('\nNetwork established!\n'))
     MY_ID = 0
 else:
     while True:
         MY_ID = json.loads(HTTP.request('GET', f'{URL}/id',
                                         headers={'Accept': 'application/json'}).data)
         if MY_ID != 0:
+            print(prompt('\nNetwork established!\n'))
             break
-        time.sleep(1)
+        print('Waiting network establishment...')
+        time.sleep(3)
 
 # actual cli loop
+
+HELP = '''This is the NOOBCASH command line interface.
+
+To launch shell, execute cli.py [-h] [-p PORT] [-b] [-c CAPACITY] [-n NODES] [-d DIFFICULTY]
+              [-a BOOTSTRAP_ADDRESS]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p PORT, --port PORT  port to listen on
+  -b, --bootstrap       whether this node is bootstrap
+  -c CAPACITY, --capacity CAPACITY
+                        number of transactions in a block
+  -n NODES, --nodes NODES
+                        number of nodes in the network
+  -d DIFFICULTY, --difficulty DIFFICULTY
+                        difficulty of mining
+  -a BOOTSTRAP_ADDRESS, --bootstrap_address BOOTSTRAP_ADDRESS
+                        Bootstrap's ip+port
+
+While using the shell, use following commands:
+  help                  show this help message
+  view                  show all transactions in the last
+                        validated block of blockchain
+  balance               show balance
+  t RECIPIENT_ID AMOUNT send AMOUNT noobcash coins to
+                        RECIPIENT_ID node
+  exit                  gracefully exit shell'''
 
 while True:
     CMD = input(prompt('noobcash') + '@' + prompt(MY_ID) + '> ')
@@ -107,23 +133,24 @@ while True:
     if CMD.startswith('t '):
         try:
             _, IDX, AMOUNT = CMD.split()
-            IDXi = int(IDX)
-            AMOUNTi = int(AMOUNT)
+            IDXI = int(IDX)
+            AMOUNTI = int(AMOUNT)
 
-            if str(IDXi) != IDX or str(AMOUNTi) != AMOUNT:
+            if str(IDXI) != IDX or str(AMOUNTI) != AMOUNT:
                 print(error('Wrong transaction parameters'))
             else:
-                transaction = {'receiver_idx': IDXi, 'amount': AMOUNTi}
-                status = HTTP.request('POST', f'{URL}/purchase',
-                                    headers={'Content-Type': 'application/json'},
-                                    body=json.dumps(transaction)).status
+                TRANSACTION = {'receiver_idx': IDXI, 'amount': AMOUNTI}
+                STATUS = HTTP.request('POST', f'{URL}/purchase',
+                                      headers={'Content-Type': 'application/json'},
+                                      body=json.dumps(TRANSACTION)).status
 
-                if status == 200:
-                    print(nbc_cmd('Sending ') + AMOUNT + nbc_cmd(f' NBC{"s" if int(AMOUNT) > 1 else ""} to node ') + IDX)
+                if STATUS == 200:
+                    print(nbc_cmd('Sending ') + AMOUNT + \
+                        nbc_cmd(f' NBC{"s" if AMOUNTI > 1 else ""} to node ') + IDX)
                 else:
-                    print(error('Unsuccessful transaction. Aborting...'))
+                    print(error('Unsuccessful transaction. Aborting...\n'))
                     break
-        except:
+        except Exception:
             print(error('Wrong transaction parameters'))
 
 
@@ -144,13 +171,13 @@ while True:
         print(str(BALANCE) + ' ' + nbc_cmd('coins'))
 
     elif CMD == 'help':
-        print(nbc_cmd('HELP'))
+        print(nbc_cmd(HELP))
 
     elif CMD == 'exit':
         break
 
     else:
-        print(error(f'Non-existent command: {CMD}. Try typing `help`.'))
+        print(error(f'Nonexistent command: {CMD}. Try typing `help`.'))
 
     print()
 
