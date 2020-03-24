@@ -5,6 +5,7 @@ Usage:
 python cli.py [-c CAPACITY] [-n NODES] [-d DIFFICULTY] [-a BOOTSTRAP_ADDRESS] [-p PORT] [-b]'''
 
 import argparse
+import subprocess
 import os
 import sys
 import signal
@@ -57,7 +58,7 @@ PORT = ARGS.port
 URL = f'127.0.0.1:{PORT}'
 BOOTSTRAP = ARGS.bootstrap
 CAPACITY = ARGS.capacity
-N = ARGS.nodes
+NODES = ARGS.nodes
 DIFFICULTY = ARGS.difficulty
 BOOTSTRAP_URL = ARGS.bootstrap_address
 
@@ -67,35 +68,38 @@ BOOTSTRAP_URL = ARGS.bootstrap_address
 
 CMD_NODE = 'python noobcash/rest.py' + \
            f' -p {PORT}' + (' -b' if BOOTSTRAP else '') + \
-           f' -c {CAPACITY} -n {N} -d {DIFFICULTY}' + \
+           f' -c {CAPACITY} -n {NODES} -d {DIFFICULTY}' + \
            f' -a \'{BOOTSTRAP_URL}\''
 
 # suppress output of flask app
-# with open(os.devnull, 'w') as fp:
-#     APP = subprocess.Popen(CMD_NODE, shell=True, stdout=fp, stderr=fp)
-# time.sleep(2) # wait for app to launch
+with open(os.devnull, 'w') as fp:
+    APP = subprocess.Popen(CMD_NODE, shell=True, stdout=fp, stderr=fp)
+time.sleep(3) # wait for app to launch
 
 HTTP = urllib3.PoolManager()
 
 ### if bootstrap, notify app to send wallets and transactions
+
+WAIT_MSG = 'Waiting for network to be established'
+NET_MSG = '\nNetwork established!\n'
 
 if BOOTSTRAP:
     # get at /ring returns if every node has been registered
     # should broadcast transactions and wallets afterwards
     while not json.loads(HTTP.request('GET', f'{URL}/ring',
                                       headers={'Accept': 'application/json'}).data):
-        print('Waiting network establishment...')
+        print(WAIT_MSG)
         time.sleep(3)
-    print(prompt('\nNetwork established!\n'))
+    print(prompt(NET_MSG))
     MY_ID = 0
 else:
     while True:
         MY_ID = json.loads(HTTP.request('GET', f'{URL}/id',
                                         headers={'Accept': 'application/json'}).data)
         if MY_ID != 0:
-            print(prompt('\nNetwork established!\n'))
+            print(prompt(NET_MSG))
             break
-        print('Waiting network establishment...')
+        print(WAIT_MSG)
         time.sleep(3)
 
 # actual cli loop
@@ -116,7 +120,7 @@ optional arguments:
   -d DIFFICULTY, --difficulty DIFFICULTY
                         difficulty of mining
   -a BOOTSTRAP_ADDRESS, --bootstrap_address BOOTSTRAP_ADDRESS
-                        Bootstrap's ip+port
+                        Bootstrap's ip:port
 
 While using the shell, use following commands:
   help                  show this help message
@@ -129,6 +133,9 @@ While using the shell, use following commands:
 
 while True:
     CMD = input(prompt('noobcash') + '@' + prompt(MY_ID) + '> ')
+    while CMD.endswith('\\'):
+        CMD = CMD[:-1] # remove last \
+        CMD += input(' ' * (len(f'noobcash@{MY_ID}') - 2) + '... ')
     print()
     if CMD.startswith('t '):
         try:
@@ -177,7 +184,7 @@ while True:
         break
 
     else:
-        print(error(f'Nonexistent command: {CMD}. Try typing `help`.'))
+        print(error(f'Nonexistent command: {CMD}. Try typing: help.'))
 
     print()
 
