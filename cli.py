@@ -114,13 +114,16 @@ if ARGS.script is not None:
         while line:
             idx, amount = get_row(line)
             transaction = {'receiver_idx': idx, 'amount': amount}
+            print(nbc_cmd('Sending ') + str(amount) + \
+                  nbc_cmd(f' NBC{"s" if amount > 1 else ""} to node ') + str(idx))
             status = HTTP.request('POST', f'{URL}/black_hat_purchase',
                                   headers={'Content-Type': 'application/json'},
                                   body=json.dumps(transaction)).status
             if status != 200:
                 print(error('Error while executing script!'))
+                break
 
-            transactions.readline()
+            line = transactions.readline()
 
 
 # actual cli loop
