@@ -90,11 +90,19 @@ if BOOTSTRAP:
         print('Waiting network establishment...')
         time.sleep(3)
     print('Network established!')
+    MY_ID = 0
+else:
+    while True:
+        MY_ID = json.loads(HTTP.request('GET', f'{URL}/id',
+                                        headers={'Accept': 'application/json'}).data)
+        if MY_ID != 0:
+            break
+        time.sleep(1)
 
 # actual cli loop
 
 while True:
-    CMD = input(prompt('noobcash') + '> ')
+    CMD = input(prompt('noobcash') + '@' + prompt(MY_ID) + '> ')
     print()
     if CMD.startswith('t '):
         try:

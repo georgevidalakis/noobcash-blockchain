@@ -49,7 +49,7 @@ def receive_block():
 @app.route('/length', methods=['GET'])
 def send_blockchain_length():
     '''Return blockchain length.'''
-    return len(NODE.blockchain), 200
+    return jsonify(len(NODE.blockchain)), 200
 
 @app.route('/blockchain', methods=['GET'])
 def send_blockchain():
@@ -63,11 +63,10 @@ def balance():
     return jsonify(NODE.my_wallet().balance), 200
 
 @app.route('/view', methods=['GET'])
-def view():
+def view_transactions():
     '''Return human readable format (`sender`, `receiver`, `amount`)
     of every transacion in the last block of the blockchain.'''
     last_block = NODE.blockchain.chain[-1]
-    print(len(last_block.list_of_transactions))
     human_readable = dict()
     for transaction in last_block.list_of_transactions:
         if isinstance(transaction.sender_pubk, int):
@@ -101,12 +100,21 @@ def broadcast_info():
     return jsonify(False), 200
 
 @app.route('/purchase', methods=['POST'])
-def make_transaction():
+def create_transaction():
+    '''Create transaction ordered from cli.'''
     req_dict = json.loads(request.data)
     receiver_idx = req_dict['receiver_idx']
     amount = req_dict['amount']
     NODE.create_transaction(receiver_idx=receiver_idx, amount=amount)
     return jsonify(None), 200
+
+@app.route('/id', methods=['GET'])
+def get_id():
+    try:
+        return jsonify(NODE.my_id), 200
+    except AttributeError:
+        return jsonify(0), 200
+
 # run it once for every node
 
 if __name__ == '__main__':
