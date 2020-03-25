@@ -130,8 +130,8 @@ def scripted_transaction():
 @app.route('/id', methods=['GET'])
 def get_id():
     try:
-        if NODE.nodes > len(NODE.ring):
-            # if not everybody is connected, wait!
+        if NODE.nodes - 1 > len(NODE.transaction_queue):
+            # if not all 100 transactions received, wait!
             raise AttributeError
         return jsonify(NODE.my_id), 200
     except AttributeError:
