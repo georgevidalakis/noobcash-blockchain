@@ -12,6 +12,12 @@ app = Flask(__name__)
 
 #.......................................................................................
 
+@app.errorhandler(Exception)
+def all_exception_handler(error):
+    sys.exit(1)
+    print('\n\n\n---------------------------------------------------------------\n\n\n')
+    return 'Error', 500
+
 @app.route('/node', methods=['POST'])
 def first_contact():
     '''Bootstrap: Respond to first contact.'''
@@ -30,6 +36,9 @@ def get_wallets():
 @app.route('/transaction', methods=['POST'])
 def receive_transaction():
     '''Receive transaction.'''
+    global trxs_rec
+
+    trxs_rec += 1
     print('\nREST /transaction\n')
     transaction_dict = json.loads(request.data)
     transaction_id = Transaction.from_dict(transaction_dict).transaction_id  # TODO: Remove line
@@ -139,8 +148,10 @@ def scripted_transaction():
 
 @app.route('/id', methods=['GET'])
 def get_id():
+    global trxs_rec
+
     try:
-        if NODE.nodes - 1 > len(NODE.transaction_queue):
+        if NODE.nodes - 1 > trxs_rec:
             # if not all 100 transactions received, wait!
             raise AttributeError
         return jsonify(NODE.my_id), 200
@@ -174,8 +185,10 @@ if __name__ == '__main__':
     DIFFICULTY = ARGS.difficulty
     BOOTSTRAP_ADDRESS = ARGS.bootstrap_address
 
+    trxs_rec = 0
+
     # NOTE: init bootstrap before others
     NODE = Node(bootstrap_address=BOOTSTRAP_ADDRESS, capacity=CAPACITY, difficulty=DIFFICULTY,
                 port=PORT, nodes=N_NODES, is_bootstrap=IS_BOOTSTRAP)
 
-    app.run(host='0.0.0.0', port=PORT, threaded=False)
+    app.run(host='0.0.0.0', port=PORT)

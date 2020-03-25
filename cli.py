@@ -109,6 +109,7 @@ else:
         time.sleep(3)
 
 if ARGS.script is not None:
+    line_id = 0
     with open(ARGS.script, 'r') as transactions:
         line = transactions.readline()
         while line:
@@ -121,9 +122,12 @@ if ARGS.script is not None:
             transaction = {'receiver_idx': idx, 'amount': amount}
             print(nbc_cmd('Sending ') + str(amount) + \
                   nbc_cmd(f' NBC{"s" if amount > 1 else ""} to node ') + str(idx))
+            print(f'Before (line #{line_id})')
             status = HTTP.request('POST', f'{URL}/black_hat_purchase',
                                   headers={'Content-Type': 'application/json'},
                                   body=json.dumps(transaction)).status
+            print(f'After (line #{line_id})')
+            line_id += 1
             if status != 200:
                 print(error('Error while executing script!'))
                 break

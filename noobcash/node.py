@@ -482,7 +482,7 @@ class Node:
 
         block = Block.from_dict(block_dict)
 
-        print(self.blockchain)
+        # print(self.blockchain)
         print(block)
 
         if block.previous_hash == self.blockchain.get_block_hash(-1):
@@ -590,10 +590,10 @@ class Node:
 
         print('\nVALIDATE_CHAIN_ENTRY\n')
 
-        print(self.blockchain)
-        print('\n\n')
-        print(blockchain)
-        print('\n\n')
+        #print(self.blockchain)
+        #print('\n\n')
+        #print(blockchain)
+        #print('\n\n')
 
         # TODO: replace with dict_object_deepcopy
         # check for the longer chain across all nodes
@@ -759,10 +759,10 @@ class Node:
         # keep transactions that have been sent to us
         # but do not exist in the received blockchain
 
-        transactions_dif = self.blockchain.set_of_transactions() + \
-                           OrderedSet(self.transaction_queue.transactions()) + \
-                           OrderedSet(self.unprocessed_transaction_queue.transactions()) - \
-                           blockchain.set_of_transactions()
+        transactions_dif = self.blockchain.set_of_transactions()\
+            .union(OrderedSet(self.transaction_queue.transactions()))\
+            .union(OrderedSet(self.unprocessed_transaction_queue.transactions())) - \
+            blockchain.set_of_transactions()
 
         self.unprocessed_transaction_queue.set(list(transactions_dif))
         self.transaction_queue.empty()

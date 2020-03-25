@@ -175,6 +175,7 @@ class Transaction:
         '''Used for debugging, returns a `json.dumps`'d `dict`.'''
 
         result = dict(
+            transaction_id=self.transaction_id,
             transaction_inputs=self.transaction_inputs,
             transaction_outputs=[
                 json.loads(str(to)) for to in self.transaction_outputs
