@@ -18,6 +18,10 @@ def nbc_cmd(string):
     '''Turn `string` purple.'''
     return f'\033[35m{string}\033[00m'
 
+def highlight(string):
+    '''Underline `string`.'''
+    return f'\033[4m{string}\033[0m'
+
 def error(string):
     '''Turn `string` red.'''
     return f'\033[91m{string}\033[00m'
@@ -38,8 +42,15 @@ def interrupt_handler(signal_received, frame):
     sys.exit(0)
 
 def get_row(row):
-    idx, amount = row.split()
-    return int(idx[2:]), int(amount)
+    '''Return receiver index and amount
+    from transactions txt.'''
+    _idx, _amount = row.split()
+    return int(_idx[2:]), int(_amount)
+
+def shorten_id(tid):
+    '''Printable SHA hashes.'''
+    return f'{tid[:4]}...{tid[-3:]}'
+
 
 signal.signal(signal.SIGINT, interrupt_handler)
 
@@ -79,7 +90,7 @@ CMD_NODE = 'python noobcash/rest.py' + \
 
 # suppress output of flask app
 with open(os.devnull, 'w') as fp:
-    APP = subprocess.Popen(CMD_NODE, shell=True)#, stdout=fp, stderr=fp)
+    APP = subprocess.Popen(CMD_NODE, shell=True, stdout=fp, stderr=fp)
 time.sleep(3) # wait for app to launch
 
 HTTP = urllib3.PoolManager()
@@ -109,7 +120,7 @@ else:
         time.sleep(3)
 
 if ARGS.script is not None:
-    line_id = 0
+    print(nbc_cmd('\nStarting script.\n'))
     with open(ARGS.script, 'r') as transactions:
         line = transactions.readline()
         while line:
@@ -120,19 +131,17 @@ if ARGS.script is not None:
                 continue
 
             transaction = {'receiver_idx': idx, 'amount': amount}
-            print(nbc_cmd('Sending ') + str(amount) + \
-                  nbc_cmd(f' NBC{"s" if amount > 1 else ""} to node ') + str(idx))
-            print(f'Before (line #{line_id})')
+            # print(nbc_cmd('Sending ') + str(amount) + \
+            #       nbc_cmd(f' NBC{"s" if amount > 1 else ""} to node ') + str(idx))
             status = HTTP.request('POST', f'{URL}/black_hat_purchase',
                                   headers={'Content-Type': 'application/json'},
                                   body=json.dumps(transaction)).status
-            print(f'After (line #{line_id})')
-            line_id += 1
             if status != 200:
                 print(error('Error while executing script!'))
                 break
 
             line = transactions.readline()
+    print(nbc_cmd('\nFinished script. It may take some time\nfor all nodes to complete their script.\n'))
 
 
 # actual cli loop
@@ -140,7 +149,7 @@ if ARGS.script is not None:
 HELP = '''This is the NOOBCASH command line interface.
 
 To launch shell, execute cli.py [-h] [-p PORT] [-b] [-c CAPACITY] [-n NODES] [-d DIFFICULTY]
-              [-a BOOTSTRAP_ADDRESS]
+                                [-a BOOTSTRAP_ADDRESS] [-s SCRIPT]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -153,13 +162,19 @@ optional arguments:
   -d DIFFICULTY, --difficulty DIFFICULTY
                         difficulty of mining
   -a BOOTSTRAP_ADDRESS, --bootstrap_address BOOTSTRAP_ADDRESS
-                        Bootstrap's ip:port
+                        Bootstrap's ip+port
+  -s SCRIPT, --script SCRIPT
+                        filename of transactions to execute
 
 While using the shell, use following commands:
   help                  show this help message
   view                  show all transactions in the last
                         validated block of blockchain
-  balance               show balance
+  view_blockchain       show all transactions in the
+                        current blockchain
+  balance               show current balance
+  balances              show balances of all nodes as
+                        reflected in blockchain  
   t RECIPIENT_ID AMOUNT send AMOUNT noobcash coins to
                         RECIPIENT_ID node
   exit                  gracefully exit shell'''
@@ -169,7 +184,9 @@ while True:
     while CMD.endswith('\\'):
         CMD = CMD[:-1] # remove last \
         CMD += input(' ' * (len(f'noobcash@{MY_ID}') - 2) + '... ')
+
     print()
+
     if CMD.startswith('t '):
         try:
             _, IDX, AMOUNT = CMD.split()
@@ -200,15 +217,49 @@ while True:
                                         headers={'Accept': 'application/json'}).data)
 
         for transaction in BLOCK['transactions']:
-            t_summary = f'{nbc_cmd("From")}: {transaction["sender"]}, ' + \
+            t_sum = f'\t{nbc_cmd("From")}: {transaction["sender"]}, ' + \
+                    f'{nbc_cmd("To")}: {transaction["receiver"]}, ' + \
+                    f'{nbc_cmd("Amount")}: {transaction["amount"]}'
+            print(t_sum)
+
+    elif CMD == 'view_blockchain':
+        print(nbc_cmd('Current blockchain:\n'))
+        BLOCKCHAIN = json.loads(HTTP.request('GET', f'{URL}/view_blockchain',
+                                             headers={'Accept': 'application/json'}).data)
+
+        transaction = BLOCKCHAIN[0]['transactions'][0]
+        t_sum = f'\t\t{nbc_cmd("From")}: {transaction["sender"]}, ' + \
+                f'{nbc_cmd("To")}: {transaction["receiver"]}, ' + \
+                f'{nbc_cmd("Amount")}: {transaction["amount"]}'
+        print(nbc_cmd('\tBlock no.'), end='')
+        print(f'0:\n{t_sum}')
+
+        for index, block in enumerate(BLOCKCHAIN[1:]):
+            order = ['st', 'nd', 'rd', 'th']
+            print(nbc_cmd('\tBlock no.'), end='')
+            print(f'{index+1}:')
+            for transaction in block['transactions']:
+                t_sum = f'\t\t{nbc_cmd("ID")}: {shorten_id(transaction["transaction_id"])}, ' + \
+                        f'{nbc_cmd("From")}: {transaction["sender"]}, ' + \
                         f'{nbc_cmd("To")}: {transaction["receiver"]}, ' + \
-                        f'{nbc_cmd("Amount")}: {transaction["amount"]}'
-            print(t_summary)
+                        f'{nbc_cmd("Amount(s)")}: ' + \
+                        f'{", ".join(map(str, transaction["amounts"]))}, ' + \
+                        f'{nbc_cmd("Inputs")}: ' + \
+                        f'{", ".join(map(shorten_id, transaction["transaction_inputs"]))}'
+                print(t_sum)
 
     elif CMD == 'balance':
         BALANCE = json.loads(HTTP.request('GET', f'{URL}/balance',
                                           headers={'Accept': 'application/json'}).data)
-        print(str(BALANCE) + ' ' + nbc_cmd('coins'))
+        print(str(BALANCE) + ' ' + nbc_cmd('NBC coins'))
+
+    elif CMD == 'balances':
+        BALANCES = json.loads(HTTP.request('GET', f'{URL}/balances',
+                                           headers={'Accept': 'application/json'}).data)
+
+        print(', '.join([str(BALANCES[k]) if int(k) != MY_ID else highlight(BALANCES[k]) \
+            for k in BALANCES]) + ' -> ' + str(sum(BALANCES.values())) + \
+            nbc_cmd(' NBC coins'))
 
     elif CMD == 'help':
         print(nbc_cmd(HELP))

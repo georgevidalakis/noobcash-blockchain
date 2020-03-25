@@ -1,5 +1,6 @@
 '''Script that defines API and runs app.'''
 
+import sys
 import json
 from flask import Flask, jsonify, request#, render_template
 
@@ -14,8 +15,8 @@ app = Flask(__name__)
 
 @app.errorhandler(Exception)
 def all_exception_handler(error):
-    sys.exit(1)
     print('\n\n\n---------------------------------------------------------------\n\n\n')
+    sys.exit(1)
     return 'Error', 500
 
 @app.route('/node', methods=['POST'])
@@ -73,6 +74,38 @@ def send_blockchain():
     '''Send blockchain.'''
     blockchain_dict = NODE.blockchain.to_dict()
     return jsonify(blockchain_dict), 200
+
+@app.route('/balances', methods=['GET'])
+def get_balances():
+    '''Send balances.'''
+    balances = dict()
+    for k in NODE.ring_bak:
+        balances[k] = NODE.ring_bak[k].balance
+    return jsonify(balances), 200
+
+@app.route('/view_blockchain', methods=['GET'])
+def view_blockchain():
+    '''Return human readable blockchain'''
+    blockchain_list = []
+    for block in NODE.blockchain.chain:
+        human_readable = dict()
+        for transaction in block.list_of_transactions:
+            if isinstance(transaction.sender_pubk, int):
+                # genesis block
+                human_readable.setdefault('transactions', []).append(
+                    dict(sender='Genesis', receiver='0',
+                        amount=sum([to.amount for to in transaction.transaction_outputs]))
+                )
+            else:
+                human_readable.setdefault('transactions', []).append(
+                    dict(transaction_id=transaction.transaction_id,
+                         transaction_inputs=transaction.transaction_inputs,
+                         sender=NODE.pubk2ind[pubk_to_key(transaction.sender_pubk)],
+                         receiver=NODE.pubk2ind[pubk_to_key(transaction.receiver_pubk)],
+                         amounts=[transaction_output.amount for transaction_output in transaction.transaction_outputs])
+                )
+        blockchain_list.append(human_readable)
+    return jsonify(blockchain_list), 200
 
 @app.route('/balance', methods=['GET'])
 def balance():

@@ -24,7 +24,7 @@ from noobcash.transaction_queue import TransactionQueue
 BLOCK_LOCK = threading.RLock()
 TRANSACTION_LOCK = threading.RLock()
 
-NUM_OF_THREADS = 1
+NUM_OF_THREADS = 5
 @wrapt.synchronized
 class Node:
     '''Cryptocurrency transaction handler of a node in the network.'''
