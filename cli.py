@@ -113,6 +113,11 @@ if ARGS.script is not None:
         line = transactions.readline()
         while line:
             idx, amount = get_row(line)
+
+            if idx >= NODES:
+                line = transactions.readline()
+                continue
+
             transaction = {'receiver_idx': idx, 'amount': amount}
             print(nbc_cmd('Sending ') + str(amount) + \
                   nbc_cmd(f' NBC{"s" if amount > 1 else ""} to node ') + str(idx))

@@ -21,11 +21,11 @@ from noobcash.blockchain import Blockchain
 from noobcash.helpers import pubk_to_key, object_dict_deepcopy
 from noobcash.transaction_queue import TransactionQueue
 
-# BLOCK_LOCK = threading.RLock()
-# TRANSACTION_LOCK = threading.RLock()
+BLOCK_LOCK = threading.RLock()
+TRANSACTION_LOCK = threading.RLock()
 
-NUM_OF_THREADS = 3
-# @wrapt.synchronized
+NUM_OF_THREADS = 1
+@wrapt.synchronized
 class Node:
     '''Cryptocurrency transaction handler of a node in the network.'''
 
@@ -271,7 +271,7 @@ class Node:
         self.broadcast_transaction(transaction)
 
 
-    #@wrapt.synchronized(TRANSACTION_LOCK)
+    # @wrapt.synchronized(TRANSACTION_LOCK)
     def create_transaction(self, receiver_idx: int, amount: int):
         '''Create, broadcast transaction, update wallets and queue.
         NOTE: sender is this node.
@@ -333,9 +333,9 @@ class Node:
 
         * `True` is response status code is 200, else `False`.'''
 
-        print('\nSENDING_DICT_ENTRY\n')
 
         dict_to_broadcast, url = request_params
+        print(f'\nSENDING_DICT_ENTRY (to {url})\n')
         http = urllib3.PoolManager()
         response = http.request('POST', url,
                                 headers={'Content-Type': 'application/json'},
@@ -460,7 +460,7 @@ class Node:
         print('\nMINE_BLOCK_EXIT\n')
 
 
-    #@wrapt.synchronized(BLOCK_LOCK)
+    # @wrapt.synchronized(BLOCK_LOCK)
     def check_my_mined_block(self, block_dict: dict):
         '''Check block returned from miner and its coherence
         with the current blockchain. Append if everything
@@ -656,7 +656,7 @@ class Node:
 
         return node_with_longest_chain, max_blockchain_len
 
-    #@wrapt.synchronized(TRANSACTION_LOCK)
+    # @wrapt.synchronized(TRANSACTION_LOCK)
     def receive_transaction(self, transaction: Union[dict, Transaction]):
         '''Validate `transaction`, update `ring` and add to queue. Call
         miner if necessary and possible.
@@ -688,7 +688,7 @@ class Node:
 
         print('\nRECEIVE_TRANSACTION_SUCCESS\n')
 
-    #@wrapt.synchronized(TRANSACTION_LOCK)
+    # @wrapt.synchronized(TRANSACTION_LOCK)
     def process_transactions(self):
         '''Process transaction in the `unprocessed_transaction_queue`.'''
 
@@ -762,8 +762,8 @@ class Node:
 
         print('\nRESOLVE_SUCCESSFUL_EXIT\n')
 
-    #@wrapt.synchronized(BLOCK_LOCK)
-    #@wrapt.synchronized(TRANSACTION_LOCK)
+    # @wrapt.synchronized(BLOCK_LOCK)
+    # @wrapt.synchronized(TRANSACTION_LOCK)
     def receive_block(self, block_dict: dict):
         '''Check if block is redundant to handle, proper to append
         to the blockchain (and kill miner) or ask for new blockchain.

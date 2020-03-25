@@ -22,6 +22,7 @@ def first_contact():
 @app.route('/wallets', methods=['POST'])
 def get_wallets():
     '''Node:  Receive wallets from bootstrap.'''
+    print('\nREST /wallets\n')
     wallet_dict = json.loads(request.data)
     NODE.receive_wallets(wallet_dict=wallet_dict)
     return jsonify(None), 200
@@ -29,6 +30,7 @@ def get_wallets():
 @app.route('/transaction', methods=['POST'])
 def receive_transaction():
     '''Receive transaction.'''
+    print('\nREST /transaction\n')
     transaction_dict = json.loads(request.data)
     transaction_id = Transaction.from_dict(transaction_dict).transaction_id  # TODO: Remove line
     print(f'\nReceived transaction with id: {transaction_id}.\n')  # TODO: Remove line
@@ -45,6 +47,7 @@ def handle_miner():
 @app.route('/block', methods=['POST'])
 def receive_block():
     '''Another node sent a block.'''
+    print('\nREST /block\n')
     block_dict = json.loads(request.data)
     NODE.receive_block(block_dict=block_dict)
     return jsonify(None), 200

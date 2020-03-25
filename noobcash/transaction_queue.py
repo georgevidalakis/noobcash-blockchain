@@ -42,7 +42,7 @@ class TransactionQueue:
 
         * `transaction`: `Trsansaction` to be appended.'''
         self.queue.append(transaction)
-        print(f'\nAppend to queue in line #{line}')
+        print(f'\nAppend to queue in line #{line}\n')
 
         for other_tra in self.queue[:-1]:
             if other_tra.transaction_id == transaction.transaction_id:
