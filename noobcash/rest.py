@@ -41,7 +41,9 @@ def receive_transaction():
 def handle_miner():
     '''Miner process sent a block.'''
     block_dict = json.loads(request.data)
-    NODE.check_my_mined_block(block_dict=block_dict)
+    block = NODE.check_my_mined_block(block_dict=block_dict)
+    if block is not None:
+        NODE.broadcast_block(block)
     return jsonify(None), 200
 
 @app.route('/block', methods=['POST'])
@@ -111,8 +113,11 @@ def create_transaction():
     req_dict = json.loads(request.data)
     receiver_idx = req_dict['receiver_idx']
     amount = req_dict['amount']
-    valid = NODE.create_transaction(receiver_idx=receiver_idx, amount=amount)
-    return jsonify(valid), 200
+    transaction = NODE.create_transaction(receiver_idx=receiver_idx, amount=amount)
+    if transaction is not None:
+        NODE.broadcast_transaction(transaction)
+
+    return jsonify(transaction is not None), 200
 
 @app.route('/black_hat_purchase', methods=['POST'])
 def scripted_transaction():
@@ -120,9 +125,14 @@ def scripted_transaction():
     req_dict = json.loads(request.data)
     receiver_idx = req_dict['receiver_idx']
     amount = req_dict['amount']
-    valid = NODE.create_transaction(receiver_idx=receiver_idx, amount=amount)
-    if not valid:
-        NODE.send_bogus_transaction(receiver_idx=receiver_idx, amount=amount)
+    transaction = NODE.create_transaction(receiver_idx=receiver_idx, amount=amount)
+    valid = True # in case in need of stats
+
+    if transaction is None:
+        valid = False
+        transaction = NODE.send_bogus_transaction(receiver_idx=receiver_idx, amount=amount)
+
+    NODE.broadcast_transaction(transaction)
 
     return jsonify(valid), 200
 

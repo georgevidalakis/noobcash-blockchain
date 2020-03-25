@@ -187,8 +187,8 @@ class Node:
 
         for k in self.ring:
             if k != self.my_id:
-                self.create_transaction(receiver_idx=k, amount=100)
-
+                transaction = self.create_transaction(receiver_idx=k, amount=100)
+                self.broadcast_transaction(transaction)
 
     def broadcast_wallets(self):
         '''As the bootstrap, broadcast the wallet of every node
@@ -250,14 +250,19 @@ class Node:
 
     def send_bogus_transaction(self, receiver_idx: int, amount: int):
         '''Create, broadcast bogus transaction.
-        NOTE: sender is this node.
+        NOTE: sender is this node, transaction is not broadcasted
+        for consistency with `create_transaction`.
 
         Arguments:
 
         * `receiver_idx`: receiver index in `ring` (chosen because
         of cli).
 
-        * `amount`: (`int`) NBCs transfered.'''
+        * `amount`: (`int`) NBCs transfered.
+
+        Returns:
+
+        * Fake `Transaction`.'''
 
         print('\nBOGUS_TRANS_ENTRY\n')
 
@@ -268,8 +273,7 @@ class Node:
         transaction.transaction_id = transaction.make_hash()
         transaction.signature = transaction.sign_transaction(self.my_wallet().private_key)
 
-        self.broadcast_transaction(transaction)
-
+        return transaction
 
     # @wrapt.synchronized(TRANSACTION_LOCK)
     def create_transaction(self, receiver_idx: int, amount: int):
@@ -296,9 +300,10 @@ class Node:
                                       value=amount, my_wallet=self.my_wallet())
         except TypeError: # Reject transaction, not enough cash
             print('\nINVALID_TRANSACTION_CREATED_EXIT\n')
-            return False
+            return None
 
-        self.broadcast_transaction(transaction)
+        # NOTE: broadcast transaction from API so not inside lock
+        # self.broadcast_transaction(transaction)
         self.add_utxos(transaction.transaction_outputs, self.ring)
         self.transaction_queue.append(transaction, 303)
 
@@ -306,7 +311,7 @@ class Node:
             self.mine_block()
 
         print('\nVALID_TRANSACTION_CREATED_EXIT\n')
-        return True
+        return transaction
 
     def add_utxos(self, transaction_outputs: list, ring: dict):
         '''Add unspent transactions to respective wallets.
@@ -464,11 +469,15 @@ class Node:
     def check_my_mined_block(self, block_dict: dict):
         '''Check block returned from miner and its coherence
         with the current blockchain. Append if everything
-        is proper. Renew miner.
+        is proper. Renew miner. NOTE: block is not broadcasted.
 
         Arguments:
 
-        * `block_dict`: `dict` directly from `to_dict()`.'''
+        * `block_dict`: `dict` directly from `to_dict()`.
+
+        Returns:
+
+        * The mined block or `None` if not appended.'''
         print('\nCHECKMYMINEDBLOCK\n')
 
         block = Block.from_dict(block_dict)
@@ -488,7 +497,8 @@ class Node:
                 self.ring_bak[self.pubk2ind[pubk_to_key(tra.sender_pubk)]]\
                     .remove_utxos(tra.transaction_inputs)
 
-            self.broadcast_block(block)
+            # NOTE: broadcast block from API so not inside lock
+            # self.broadcast_block(block)
 
             self.blockchain.append_block(block)
 
@@ -497,11 +507,14 @@ class Node:
             # new blockchain/block received and miner was not killed in time
             # enable to recall, but transaction queue is new so dont meddle
             self.miner_pid = None
+            block = None
 
         if len(self.transaction_queue) >= self.capacity:
             self.mine_block()
 
         print('\nCHECKMYMINEDBLOCK_EXIT')
+
+        return block
 
     def broadcast_block(self, block: Block):
         '''Broadcast mined block to all nodes.
