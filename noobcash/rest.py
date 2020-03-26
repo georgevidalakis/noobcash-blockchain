@@ -224,4 +224,4 @@ if __name__ == '__main__':
     NODE = Node(bootstrap_address=BOOTSTRAP_ADDRESS, capacity=CAPACITY, difficulty=DIFFICULTY,
                 port=PORT, nodes=N_NODES, is_bootstrap=IS_BOOTSTRAP)
 
-    app.run(host='0.0.0.0', port=PORT)
+    app.run(host='0.0.0.0', port=PORT, )
