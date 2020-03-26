@@ -20,7 +20,6 @@ setup(
             'ordered_set',
             'urllib3',
             'numpy',
-            'requests',
             'pycryptodome',
         ],
     },
