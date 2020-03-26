@@ -214,7 +214,7 @@ while True:
 
                 if RESPONSE.status == 200 and json.loads(RESPONSE.data):
                     print(nbc_cmd('Sending ') + AMOUNT + \
-                        nbc_cmd(f' NBC{"s" if AMOUNTI > 1 else ""} to node ') + IDX)
+                        nbc_cmd(f' NBC coin{"s" if AMOUNTI > 1 else ""} to node ') + IDX)
                 else:
                     print(error('Unsuccessful transaction. Aborting...\n'))
                     break

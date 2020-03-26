@@ -14,7 +14,7 @@ Noobcash utilizes Proof-Of-Work for consensus. The assumptions needed to operate
 
 To setup a Noobcash network, one has to [install](./docs/installation.md) the project locally. Afterwards, the high-level way to initialize is to properly use `cli.py`.
 
-```bash
+```console
 $ python cli.py -h
 
 usage: cli.py [-h] [-p PORT] [-b] [-c CAPACITY] [-n NODES] [-d DIFFICULTY]
@@ -38,7 +38,7 @@ optional arguments:
 
 NOTE that the bootstrap should be the one initialized first. After starting every node, one should be able to access the Noobcash shell (CLI):
 
-```bash
+```console
 noobcash@0> help
 
 This is the NOOBCASH command line interface.
@@ -76,3 +76,7 @@ While using the shell, use following commands:
   exit                  gracefully exit shell
 
 ```
+
+A demo of creating a transaction:
+
+![transaction](./media/noobcash.gif)
