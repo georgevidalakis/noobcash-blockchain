@@ -90,7 +90,7 @@ CMD_NODE = 'python noobcash/rest.py' + \
 
 # suppress output of flask app
 with open(os.devnull, 'w') as fp:
-    APP = subprocess.Popen(CMD_NODE, shell=True, stdout=fp, stderr=fp)
+    APP = subprocess.Popen(CMD_NODE, shell=True)#, stdout=fp, stderr=fp)
 time.sleep(3) # wait for app to launch
 
 HTTP = urllib3.PoolManager()
