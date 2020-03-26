@@ -90,14 +90,14 @@ CMD_NODE = 'python noobcash/rest.py' + \
 
 # suppress output of flask app
 with open(os.devnull, 'w') as fp:
-    APP = subprocess.Popen(CMD_NODE, shell=True)#, stdout=fp, stderr=fp)
+    APP = subprocess.Popen(CMD_NODE, shell=True, stdout=fp, stderr=fp)
 time.sleep(3) # wait for app to launch
 
 HTTP = urllib3.PoolManager()
 
 ### if bootstrap, notify app to send wallets and transactions
 
-WAIT_MSG = 'Waiting for network to be established'
+WAIT_MSG = 'Waiting for network to be established...'
 NET_MSG = '\nNetwork established!\n'
 
 if BOOTSTRAP:
@@ -120,7 +120,7 @@ else:
         time.sleep(3)
 
 if ARGS.script is not None:
-    print(nbc_cmd('\nStarting script.\n'))
+    print(nbc_cmd('\nStarting script\n'))
     with open(ARGS.script, 'r') as transactions:
         line = transactions.readline()
         while line:
@@ -136,18 +136,24 @@ if ARGS.script is not None:
 
             try:
                 status = HTTP.request('POST', f'{URL}/black_hat_purchase',
-                                    headers={'Content-Type': 'application/json'},
-                                    body=json.dumps(transaction)).status
+                                      headers={'Content-Type': 'application/json'},
+                                      body=json.dumps(transaction)).status
             except Exception:
-                continue
+                continue # avoid "Remote end closed connection without response"
 
             if status != 200:
                 print(error('Error while executing script!'))
                 break
 
             line = transactions.readline()
-    print(nbc_cmd('\nFinished script. It may take some time\nfor all nodes to complete their script.\n'))
 
+    try:
+        if status == 200:
+            print(nbc_cmd('\nFinished script. It may take some time\
+                \nfor all nodes to complete their script\n'))
+    except:
+        print(nbc_cmd('\nFinished script. It may take some time\
+                \nfor all nodes to complete their script\n'))
 
 # actual cli loop
 
@@ -273,7 +279,7 @@ while True:
         break
 
     else:
-        print(error(f'Nonexistent command: {CMD}. Try typing: help.'))
+        print(error(f'Nonexistent command: {CMD}. Try typing: help'))
 
     print()
 

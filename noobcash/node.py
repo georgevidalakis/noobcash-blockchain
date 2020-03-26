@@ -6,8 +6,8 @@ import signal
 import json
 from typing import Union
 from multiprocessing.dummy import Pool as ThreadPool
-import wrapt
 import threading
+import wrapt
 import urllib3
 import numpy as np
 from Crypto.Signature import PKCS1_v1_5
@@ -23,8 +23,6 @@ from noobcash.transaction_queue import TransactionQueue
 
 BLOCK_LOCK = threading.RLock()
 TRANSACTION_LOCK = threading.RLock()
-
-NUM_OF_THREADS = 2
 
 # @wrapt.synchronized
 class Node:
@@ -133,8 +131,8 @@ class Node:
         # we are contacting the bootstrap
         # loop until we get proper chain
         response = json.loads(http.request('POST', f'{bootstrap_address}/node',
-                                            headers={'Content-Type': 'application/json'},
-                                            body=json.dumps(myinfo)).data)
+                                           headers={'Content-Type': 'application/json'},
+                                           body=json.dumps(myinfo)).data)
 
         # blockchain in response is (ordered) list of blocks
         return response['id'], Blockchain.from_dict(response['blockchain'])
@@ -209,7 +207,7 @@ class Node:
             k: self.ring[k].to_dict() for k in self.ring
         }
 
-        pool = ThreadPool(NUM_OF_THREADS)
+        pool = ThreadPool(self.nodes-1)
         request_params_list = [
             (broadcast_message, f'{self.ring[receiver_idx].address}/wallets') \
                 for receiver_idx in self.ring if receiver_idx != self.my_id
@@ -306,7 +304,7 @@ class Node:
         # NOTE: broadcast transaction from API so not inside lock
         # self.broadcast_transaction(transaction)
         self.add_utxos(transaction.transaction_outputs, self.ring)
-        self.transaction_queue.append(transaction, 303)
+        self.transaction_queue.append(transaction)#, 303)
 
         if len(self.transaction_queue) >= self.capacity:
             self.mine_block()
@@ -363,7 +361,7 @@ class Node:
         # print('\nBROADCASTING_TRANSACTION_ENTRY\n')
 
         broadcast_message = transaction.to_dict()
-        pool = ThreadPool(NUM_OF_THREADS)
+        pool = ThreadPool(self.nodes-1)
         request_params_list = [
             (broadcast_message, f'{self.ring[receiver_idx].address}/transaction') \
                 for receiver_idx in self.ring if receiver_idx != self.my_id
@@ -432,7 +430,7 @@ class Node:
         # print(len(self.blockchain))
         # print()
         block = Block(self.blockchain)
-        
+
         block.add_transactions(self.transaction_queue[:self.capacity])
         block.mine(self.difficulty)
 
@@ -525,7 +523,7 @@ class Node:
         # print('\nBROADCAST_BLOCK_ENTRY\n')
 
         broadcast_message = block.to_dict()
-        pool = ThreadPool(NUM_OF_THREADS)
+        pool = ThreadPool(self.nodes-1)
         request_params_list = [
             (broadcast_message, f'{self.ring[receiver_idx].address}/block') \
                  for receiver_idx in self.ring if receiver_idx != self.my_id
@@ -592,9 +590,8 @@ class Node:
         # print(self.blockchain)
         # print('\n\n')
         # print(blockchain)
-        #  print('\n\n')
+        # print('\n\n')
 
-        # TODO: replace with dict_object_deepcopy
         # check for the longer chain across all nodes
         new_ring = {k: Wallet.from_dict(self.ring[k].to_dict()) for k in self.ring}
         new_ring[self.my_id].private_key = self.my_wallet().private_key
@@ -648,7 +645,7 @@ class Node:
 
         # print('\nGET_LENSS\n')
 
-        pool = ThreadPool(NUM_OF_THREADS)
+        pool = ThreadPool(self.nodes-1)
         urls = [
             f'{self.ring[receiver_idx].address}/length' \
                 for receiver_idx in self.ring if receiver_idx != self.my_id
@@ -686,14 +683,14 @@ class Node:
         # append to unprocessed
         if len(self.ring) == 1 and self.my_id != 0:
             # print('\n\nUNPROCESSED_RECEIVE_TRA_EXIT\n\n')
-            self.unprocessed_transaction_queue.append(transaction, 678)
+            self.unprocessed_transaction_queue.append(transaction)#, 678)
             return
 
         if not self.validate_transaction(transaction, self.ring):
             # print('\nINVALID_TRANSACTION_RECEIVE_EXIT\n')
             return
         self.add_utxos(transaction.transaction_outputs, self.ring)
-        self.transaction_queue.append(transaction, 685)
+        self.transaction_queue.append(transaction)#, 685)
 
         if len(self.transaction_queue) >= self.capacity:
             self.mine_block()
@@ -711,7 +708,7 @@ class Node:
                 print('\nPROCESS_UNPROCESSED_FAILE_EXIT\n')
                 return
             self.add_utxos(tra.transaction_outputs, self.ring)
-            self.transaction_queue.append(tra, 703)
+            self.transaction_queue.append(tra)#, 703)
 
         self.unprocessed_transaction_queue.empty()
 
@@ -783,7 +780,7 @@ class Node:
         Arguments:
 
         * `block_dict`: `dict` directly from `to_dict()`.'''
-        
+
         # print('\nRECEIVEDBLOCK_ENTRY\n')
 
         block = Block.from_dict(block_dict)
@@ -808,7 +805,7 @@ class Node:
             # logic: removed transactions of block from queue
             # & update ring wrt transactions never seen before
             # without adding them to the queue, while preserving
-            # their order with OrderedSet 
+            # their order with OrderedSet
             tra_queue_set = OrderedSet(self.transaction_queue.transactions())
             rec_tra_set = OrderedSet(block.list_of_transactions)
 

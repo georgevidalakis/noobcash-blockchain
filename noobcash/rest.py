@@ -13,11 +13,6 @@ app = Flask(__name__)
 
 #.......................................................................................
 
-@app.errorhandler(Exception)
-def all_exception_handler(error):
-    print('\n\n\n---------------------------------------------------------------\n\n\n')
-    sys.exit(1)
-    return 'Error', 500
 
 @app.route('/node', methods=['POST'])
 def first_contact():
@@ -29,7 +24,7 @@ def first_contact():
 @app.route('/wallets', methods=['POST'])
 def get_wallets():
     '''Node:  Receive wallets from bootstrap.'''
-    print('\nREST /wallets\n')
+    # print('\nREST /wallets\n')
     wallet_dict = json.loads(request.data)
     NODE.receive_wallets(wallet_dict=wallet_dict)
     return jsonify(None), 200
@@ -40,10 +35,10 @@ def receive_transaction():
     global trxs_rec
 
     trxs_rec += 1
-    print('\nREST /transaction\n')
+    # print('\nREST /transaction\n')
     transaction_dict = json.loads(request.data)
-    transaction_id = Transaction.from_dict(transaction_dict).transaction_id  # TODO: Remove line
-    print(f'\nReceived transaction with id: {transaction_id}.\n')  # TODO: Remove line
+    # transaction_id = Transaction.from_dict(transaction_dict).transaction_id
+    # print(f'\nReceived transaction with id: {transaction_id}.\n')
     NODE.receive_transaction(transaction=transaction_dict)
     return jsonify(None), 200
 
@@ -59,7 +54,7 @@ def handle_miner():
 @app.route('/block', methods=['POST'])
 def receive_block():
     '''Another node sent a block.'''
-    print('\nREST /block\n')
+    # print('\nREST /block\n')
     block_dict = json.loads(request.data)
     NODE.receive_block(block_dict=block_dict)
     return jsonify(None), 200
@@ -94,7 +89,7 @@ def view_blockchain():
                 # genesis block
                 human_readable.setdefault('transactions', []).append(
                     dict(sender='Genesis', receiver='0',
-                        amount=sum([to.amount for to in transaction.transaction_outputs]))
+                         amount=sum([to.amount for to in transaction.transaction_outputs]))
                 )
             else:
                 human_readable.setdefault('transactions', []).append(
@@ -102,7 +97,8 @@ def view_blockchain():
                          transaction_inputs=transaction.transaction_inputs,
                          sender=NODE.pubk2ind[pubk_to_key(transaction.sender_pubk)],
                          receiver=NODE.pubk2ind[pubk_to_key(transaction.receiver_pubk)],
-                         amounts=[transaction_output.amount for transaction_output in transaction.transaction_outputs])
+                         amounts=[transaction_output.amount \
+                             for transaction_output in transaction.transaction_outputs])
                 )
         blockchain_list.append(human_readable)
     return jsonify(blockchain_list), 200
@@ -181,6 +177,11 @@ def scripted_transaction():
 
 @app.route('/id', methods=['GET'])
 def get_id():
+    '''Get ID bestowed by bootstrap. Return 0
+    if not yet defined (0 is reserved for bootstrap,
+    so 0 must be used to check if id is set, could
+    be a negative number).'''
+
     global trxs_rec
 
     try:

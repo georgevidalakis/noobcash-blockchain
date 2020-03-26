@@ -35,20 +35,20 @@ class TransactionQueue:
         '''Return number of transactions in queue.'''
         return len(self.queue)
 
-    def append(self, transaction: Transaction, line: int):
+    def append(self, transaction: Transaction):#, line: int):
         '''Append `transaction` to `queue`.
 
         Arguments:
 
         * `transaction`: `Trsansaction` to be appended.'''
         self.queue.append(transaction)
-        print(f'\nAppend to queue in line #{line}\n')
+        # print(f'\nAppend to queue in line #{line}\n')
 
-        for other_tra in self.queue[:-1]:
-            if other_tra.transaction_id == transaction.transaction_id:
-                print(f'\nDuplicate transaction created in line #{line}.\n')
-                print('\n'.join([str(tra) for tra in self.queue]))
-                break
+        # for other_tra in self.queue[:-1]:
+        #     if other_tra.transaction_id == transaction.transaction_id:
+        #         print(f'\nDuplicate transaction created in line #{line}.\n')
+        #         print('\n'.join([str(tra) for tra in self.queue]))
+        #         break
 
     def extend(self, transactions):
         '''Extend `queue` with `transactions`.

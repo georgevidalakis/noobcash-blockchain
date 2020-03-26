@@ -71,6 +71,11 @@ class Blockchain:
         return self.chain[i].hash
 
     def append_block(self, block: Block):
+        '''Append block to chain and renew `hashes_set`.
+
+        Arguments:
+
+        * `block`: `Block` to append.'''
         self.chain.append(block)
         self.hashes_set.add(block.hash)
 

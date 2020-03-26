@@ -4,12 +4,11 @@ Contains `private_key` (RSA object) if wallet belongs to the node,
 of the node, `utxos` as a dict of its unspent transactions and `balance`
 the sum of its available money.'''
 
-import copy
 import subprocess
 
-from Crypto.PublicKey import RSA
+import wrapt
 
-from wrapt import synchronized
+from Crypto.PublicKey import RSA
 
 from noobcash.transaction_output import TransactionOutput
 from noobcash.helpers import pubk_to_dict, pubk_from_dict, object_dict_deepcopy
@@ -35,8 +34,8 @@ class Wallet:
             self.private_key = RSA.generate(2048)
             self.public_key = self.private_key.publickey() # n, e
             # NOTE: added port into address
-            ip = subprocess.check_output(["hostname", "-I"]).decode().split()[0]
-            self.address = f'{ip}:{port}'
+            hip = subprocess.check_output(["hostname", "-I"]).decode().split()[0]
+            self.address = f'{hip}:{port}'
         self.utxos = dict() # key: transaction_id.hex_digest, value: utxo
         self.balance = 0 # Utxos and balance may be inconsistent (lock)
 
@@ -145,7 +144,7 @@ class Wallet:
     # Note that concurrency while removing can only happen for the same sender
     # since she is the only one that can access her utxos
     # CAN BE REMOVED IF WE ASSUME NO ILL WILL
-    @synchronized
+    @wrapt.synchronized
     def check_and_remove_utxos(self, utxo_ids, amount):
         '''Encapsulates checking and removing transaction inputs.
 
