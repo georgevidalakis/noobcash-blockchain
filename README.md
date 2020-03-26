@@ -79,4 +79,4 @@ While using the shell, use following commands:
 
 A demo of creating a transaction:
 
-![transaction](./media/noobcash.gif)
+![transaction](./multimedia/noobcash.gif)
