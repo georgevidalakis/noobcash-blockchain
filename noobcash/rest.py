@@ -143,7 +143,9 @@ def broadcast_info():
     if wallet_broad == 0 and NODE.nodes == len(NODE.ring):
         wallet_broad = 42
         NODE.broadcast_wallets()
-        NODE.broadcast_initial_transactions()
+        transactions = NODE.create_initial_transactions()
+        for tra in transactions:
+            NODE.broadcast_transaction(tra)
         return jsonify(True), 200
 
     return jsonify(wallet_broad == 42), 200
@@ -229,4 +231,4 @@ if __name__ == '__main__':
     NODE = Node(bootstrap_address=BOOTSTRAP_ADDRESS, capacity=CAPACITY, difficulty=DIFFICULTY,
                 port=PORT, nodes=N_NODES, is_bootstrap=IS_BOOTSTRAP)
 
-    app.run(host='0.0.0.0', port=PORT, )
+    app.run(host='0.0.0.0', port=PORT)

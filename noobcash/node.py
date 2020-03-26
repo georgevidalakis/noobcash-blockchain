@@ -24,7 +24,9 @@ from noobcash.transaction_queue import TransactionQueue
 BLOCK_LOCK = threading.RLock()
 TRANSACTION_LOCK = threading.RLock()
 
-# @wrapt.synchronized
+NUM_OF_THREADS = 1
+
+@wrapt.synchronized
 class Node:
     '''Cryptocurrency transaction handler of a node in the network.'''
 
@@ -180,15 +182,19 @@ class Node:
 
         return info
 
-    def broadcast_initial_transactions(self):
+    def create_initial_transactions(self):
         '''Bootstrap sends 100 NBC coins to every node in the network.'''
 
         print('\nBROADCAST_INIT\n')
 
+        transactions = []
+
         for k in self.ring:
             if k != self.my_id:
                 transaction = self.create_transaction(receiver_idx=k, amount=100)
-                self.broadcast_transaction(transaction)
+                transactions.append(transaction)
+
+        return transactions
 
     def broadcast_wallets(self):
         '''As the bootstrap, broadcast the wallet of every node
@@ -205,7 +211,7 @@ class Node:
             k: self.ring[k].to_dict() for k in self.ring
         }
 
-        pool = ThreadPool(self.nodes-1)
+        pool = ThreadPool(NUM_OF_THREADS)
         request_params_list = [
             (broadcast_message, f'{self.ring[receiver_idx].address}/wallets') \
                 for receiver_idx in self.ring if receiver_idx != self.my_id
@@ -246,9 +252,9 @@ class Node:
         self.process_transactions()
 
     def send_bogus_transaction(self, receiver_idx: int, amount: int):
-        '''Create, broadcast bogus transaction.
-        NOTE: sender is this node, transaction is not broadcasted
-        for consistency with `create_transaction`.
+        '''Create bogus transaction. NOTE: sender is this node,
+        transaction is not broadcasted for consistency with
+        `create_transaction`.
 
         Arguments:
 
@@ -272,10 +278,10 @@ class Node:
 
         return transaction
 
-    @wrapt.synchronized(TRANSACTION_LOCK)
+    # @wrapt.synchronized(TRANSACTION_LOCK)
     def create_transaction(self, receiver_idx: int, amount: int):
-        '''Create, broadcast transaction, update wallets and queue.
-        NOTE: sender is this node.
+        '''Create transaction, update wallets and queue.
+        NOTE: sender is this node, transaction is not broadcasted.
 
         Arguments:
 
@@ -359,7 +365,7 @@ class Node:
         print('\nBROADCASTING_TRANSACTION_ENTRY\n')
 
         broadcast_message = transaction.to_dict()
-        pool = ThreadPool(self.nodes-1)
+        pool = ThreadPool(NUM_OF_THREADS)
         request_params_list = [
             (broadcast_message, f'{self.ring[receiver_idx].address}/transaction') \
                 for receiver_idx in self.ring if receiver_idx != self.my_id
@@ -409,7 +415,7 @@ class Node:
                 print('\nINVALID_TRANSACTION_EXIT\n')
                 return False
             amount += utxo.amount
-        print(transaction)
+        # print(transaction)
         return ring[self.pubk2ind[pubk_to_key(transaction.sender_pubk)]]\
             .check_and_remove_utxos(transaction.transaction_inputs, amount)
         # res = ring[self.pubk2ind[pubk_to_key(transaction.sender_pubk)]]\
@@ -462,7 +468,7 @@ class Node:
         print('\nMINE_BLOCK_EXIT\n')
 
 
-    @wrapt.synchronized(BLOCK_LOCK)
+    # @wrapt.synchronized(BLOCK_LOCK)
     def check_my_mined_block(self, block_dict: dict):
         '''Check block returned from miner and its coherence
         with the current blockchain. Append if everything
@@ -479,8 +485,8 @@ class Node:
 
         block = Block.from_dict(block_dict)
 
-        print(self.blockchain)
-        print(block)
+        # print(self.blockchain)
+        # print(block)
 
         if block.previous_hash == self.blockchain.get_block_hash(-1):
             print('\n\nMYBLOCKWINS\n\n')
@@ -523,7 +529,7 @@ class Node:
         print('\nBROADCAST_BLOCK_ENTRY\n')
 
         broadcast_message = block.to_dict()
-        pool = ThreadPool(self.nodes-1)
+        pool = ThreadPool(NUM_OF_THREADS)
         request_params_list = [
             (broadcast_message, f'{self.ring[receiver_idx].address}/block') \
                  for receiver_idx in self.ring if receiver_idx != self.my_id
@@ -587,9 +593,9 @@ class Node:
 
         print('\nVALIDATE_CHAIN_ENTRY\n')
 
-        print(self.blockchain)
+        # print(self.blockchain)
         print('\n\n')
-        print(blockchain)
+        # print(blockchain)
         print('\n\n')
 
         # check for the longer chain across all nodes
@@ -602,7 +608,7 @@ class Node:
 
         for block in blockchain.chain[1:]:
             print('\nBLOCK\n')
-            print(block)
+            # print(block)
             if not self.valid_proof(block, new_ring):
                 print('\nVALIDATE_CHAIN_BLOCK_EXIT\n')
                 return False
@@ -645,7 +651,7 @@ class Node:
 
         print('\nGET_LENSS\n')
 
-        pool = ThreadPool(self.nodes-1)
+        pool = ThreadPool(NUM_OF_THREADS)
         urls = [
             f'{self.ring[receiver_idx].address}/length' \
                 for receiver_idx in self.ring if receiver_idx != self.my_id
@@ -665,7 +671,7 @@ class Node:
 
         return node_with_longest_chain, max_blockchain_len
 
-    @wrapt.synchronized(TRANSACTION_LOCK)
+    # @wrapt.synchronized(TRANSACTION_LOCK)
     def receive_transaction(self, transaction: Union[dict, Transaction]):
         '''Validate `transaction`, update `ring` and add to queue. Call
         miner if necessary and possible.
@@ -697,7 +703,7 @@ class Node:
 
         print('\nRECEIVE_TRANSACTION_SUCCESS\n')
 
-    @wrapt.synchronized(TRANSACTION_LOCK)
+    # @wrapt.synchronized(TRANSACTION_LOCK)
     def process_transactions(self):
         '''Process transaction in the `unprocessed_transaction_queue`.'''
 
@@ -771,8 +777,8 @@ class Node:
 
         print('\nRESOLVE_SUCCESSFUL_EXIT\n')
 
-    @wrapt.synchronized(BLOCK_LOCK)
-    @wrapt.synchronized(TRANSACTION_LOCK)
+    # @wrapt.synchronized(BLOCK_LOCK)
+    # @wrapt.synchronized(TRANSACTION_LOCK)
     def receive_block(self, block_dict: dict):
         '''Check if block is redundant to handle, proper to append
         to the blockchain (and kill miner) or ask for new blockchain.
