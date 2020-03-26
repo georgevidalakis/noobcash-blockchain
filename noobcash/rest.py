@@ -138,12 +138,15 @@ def broadcast_info():
     Returns:
 
     * `True` if all nodes registered, else `False`.'''
+    global wallet_broad
 
-    if NODE.nodes == len(NODE.ring):
+    if wallet_broad == 0 and NODE.nodes == len(NODE.ring):
+        wallet_broad = 42
         NODE.broadcast_wallets()
         NODE.broadcast_initial_transactions()
         return jsonify(True), 200
-    return jsonify(False), 200
+
+    return jsonify(wallet_broad == 42), 200
 
 @app.route('/purchase', methods=['POST'])
 def create_transaction():
@@ -220,6 +223,7 @@ if __name__ == '__main__':
     BOOTSTRAP_ADDRESS = ARGS.bootstrap_address
 
     trxs_rec = 0
+    wallet_broad = 0
 
     # NOTE: init bootstrap before others
     NODE = Node(bootstrap_address=BOOTSTRAP_ADDRESS, capacity=CAPACITY, difficulty=DIFFICULTY,

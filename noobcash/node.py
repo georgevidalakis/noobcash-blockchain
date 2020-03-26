@@ -46,7 +46,7 @@ class Node:
 
         * `is_bootstrap`: if this node is the bootstrap.'''
 
-        # print('\nINIT\n')
+        print('\nINIT\n')
 
         wallet = self.generate_wallet(port)
 
@@ -98,7 +98,7 @@ class Node:
     def init_bootstrap_blockchain(self):
         '''Initialize the blockchain of the bootstrap node.'''
 
-        # print('\nINIT_BOOT_CHAIN\n')
+        print('\nINIT_BOOT_CHAIN\n')
 
         genesis_transaction = Transaction(recipient_pubk=self.my_wallet().public_key,
                                           value=100*self.nodes, my_wallet=None)
@@ -122,7 +122,7 @@ class Node:
 
         * ([ascending] ID of node in the network, [not validated] bootstrap's blockchain).'''
 
-        # print('\nFIRST_CONTACT\n')
+        print('\nFIRST_CONTACT\n')
 
         myinfo = wallet.to_dict()
 
@@ -163,7 +163,7 @@ class Node:
 
         * `dict` with ['id', 'blockchain'].'''
 
-        # print('\nREGISTER\n')
+        print('\nREGISTER\n')
 
         node_wallet = Wallet.from_dict(wallet_dict)
         # if node has already contacted before to register
@@ -171,6 +171,7 @@ class Node:
         index = self.pubk2ind.get(pubk_to_key(node_wallet.public_key), len(self.pubk2ind))
         self.pubk2ind[pubk_to_key(node_wallet.public_key)] = index
         self.ring[index] = node_wallet
+        self.ring_bak[index] = node_wallet.deepcopy()
 
         info = dict(
             blockchain=self.blockchain.to_dict(),
@@ -182,7 +183,7 @@ class Node:
     def broadcast_initial_transactions(self):
         '''Bootstrap sends 100 NBC coins to every node in the network.'''
 
-        # print('\nBROADCAST_INIT\n')
+        print('\nBROADCAST_INIT\n')
 
         for k in self.ring:
             if k != self.my_id:
@@ -198,10 +199,7 @@ class Node:
         * `True` if all nodes responded with a 200 code.'''
 
 
-        # print('\nBROADCAST WALLETS\n')
-
-        # renew backup
-        self.ring_bak = object_dict_deepcopy(self.ring)
+        print('\nBROADCAST WALLETS\n')
 
         broadcast_message = {
             k: self.ring[k].to_dict() for k in self.ring
@@ -228,7 +226,7 @@ class Node:
         * `wallet_dict`: `dict` with indices as key values
         and `Wallet` `dicts` as values.'''
 
-        # print('\nRECEIVE_WALLETS\n')
+        print('\nRECEIVE_WALLETS\n')
 
         self.ring = {
             int(idx): Wallet.from_dict(wallet_dict[idx]) \
@@ -263,7 +261,7 @@ class Node:
 
         * Fake `Transaction`.'''
 
-        # print('\nBOGUS_TRANS_ENTRY\n')
+        print('\nBOGUS_TRANS_ENTRY\n')
 
         transaction = Transaction(recipient_pubk=self.ring[receiver_idx].public_key,
                                   value=amount, my_wallet=None)
@@ -290,7 +288,7 @@ class Node:
 
         * `True` is transaction succesfully created, else `False`.'''
 
-        # print('\nCREATE_TRANSACTION_ENTRY\n')
+        print('\nCREATE_TRANSACTION_ENTRY\n')
 
         receiver_wallet = self.ring[receiver_idx]
         try:
@@ -298,7 +296,7 @@ class Node:
             transaction = Transaction(recipient_pubk=receiver_wallet.public_key,
                                       value=amount, my_wallet=self.my_wallet())
         except TypeError: # Reject transaction, not enough cash
-            # print('\nINVALID_TRANSACTION_CREATED_EXIT\n')
+            print('\nINVALID_TRANSACTION_CREATED_EXIT\n')
             return None
 
         # NOTE: broadcast transaction from API so not inside lock
@@ -309,7 +307,7 @@ class Node:
         if len(self.transaction_queue) >= self.capacity:
             self.mine_block()
 
-        # print('\nVALID_TRANSACTION_CREATED_EXIT\n')
+        print('\nVALID_TRANSACTION_CREATED_EXIT\n')
         return transaction
 
     def add_utxos(self, transaction_outputs: list, ring: dict):
@@ -321,7 +319,7 @@ class Node:
 
         * `ring`: `Wallet` of nodes.'''
 
-        # print('\nADD_UTXOS_ENTRY\n')
+        print('\nADD_UTXOS_ENTRY\n')
 
         for tro in transaction_outputs:
             ring[self.pubk2ind[pubk_to_key(tro.receiver_public_key)]].add_utxo(tro)
@@ -339,7 +337,7 @@ class Node:
 
 
         dict_to_broadcast, url = request_params
-        # print(f'\nSENDING_DICT_ENTRY (to {url})\n')
+        print(f'\nSENDING_DICT_ENTRY (to {url})\n')
         http = urllib3.PoolManager()
         response = http.request('POST', url,
                                 headers={'Content-Type': 'application/json'},
@@ -358,7 +356,7 @@ class Node:
 
         * `True` is send successfully to every node.'''
 
-        # print('\nBROADCASTING_TRANSACTION_ENTRY\n')
+        print('\nBROADCASTING_TRANSACTION_ENTRY\n')
 
         broadcast_message = transaction.to_dict()
         pool = ThreadPool(self.nodes-1)
@@ -385,17 +383,17 @@ class Node:
 
         * `True` if valid.'''
 
-        # print('\nVALIDATE_TRANSACTION_ENTRY\n')
+        print('\nVALIDATE_TRANSACTION_ENTRY\n')
 
         # signature
         if not PKCS1_v1_5.new(transaction.sender_pubk).verify(transaction.make_hash(as_str=False),
                                                               transaction.signature):
-            # print('\nINVALID_TRANSACTION_EXIT\n')
+            print('\nINVALID_TRANSACTION_EXIT\n')
             return False
 
         # double spending
         if len(set(transaction.transaction_inputs)) < len(transaction.transaction_inputs):
-            # print('\nINVALID_TRANSACTION_EXIT\n')
+            print('\nINVALID_TRANSACTION_EXIT\n')
             return False
 
         # check ids are the same, note that utxos can be 1 or 2
@@ -408,10 +406,10 @@ class Node:
         amount = 0
         for utxo in transaction.transaction_outputs:
             if utxo.amount < 0:
-                # print('\nINVALID_TRANSACTION_EXIT\n')
+                print('\nINVALID_TRANSACTION_EXIT\n')
                 return False
             amount += utxo.amount
-        # print(transaction)
+        print(transaction)
         return ring[self.pubk2ind[pubk_to_key(transaction.sender_pubk)]]\
             .check_and_remove_utxos(transaction.transaction_inputs, amount)
         # res = ring[self.pubk2ind[pubk_to_key(transaction.sender_pubk)]]\
@@ -428,9 +426,9 @@ class Node:
         process. Sends the mined block through the API. Commits
         suicide so as not to continue the process.'''
 
-        # print('\nMINER_INIT\n')
-        # print(len(self.blockchain))
-        # print()
+        print('\nMINER_INIT\n')
+        print(len(self.blockchain))
+        print()
         block = Block(self.blockchain)
 
         block.add_transactions(self.transaction_queue[:self.capacity])
@@ -440,7 +438,7 @@ class Node:
                                    f'127.0.0.1:{self.my_wallet().address.split(":")[-1]}' + \
                                        '/mined_block'))
 
-        # print('\nMINER_EXIT\n')
+        print('\nMINER_EXIT\n')
         # su-su-suicide
         sys.exit(0)
 
@@ -448,11 +446,11 @@ class Node:
         '''High-level function to call when being ready
         to mine.'''
 
-        # print('\nMINE_BLOCK_ENTRY\n')
+        print('\nMINE_BLOCK_ENTRY\n')
 
         if self.miner_pid is not None:
             # miner is already mining
-            # print('\nNO_MINE_BLOCK_EXIT\n')
+            print('\nNO_MINE_BLOCK_EXIT\n')
 
             return
 
@@ -461,7 +459,7 @@ class Node:
             self.miner()
         else: # father
             self.miner_pid = pid
-        # print('\nMINE_BLOCK_EXIT\n')
+        print('\nMINE_BLOCK_EXIT\n')
 
 
     @wrapt.synchronized(BLOCK_LOCK)
@@ -477,15 +475,15 @@ class Node:
         Returns:
 
         * The mined block or `None` if not appended.'''
-        # print('\nCHECKMYMINEDBLOCK\n')
+        print('\nCHECKMYMINEDBLOCK\n')
 
         block = Block.from_dict(block_dict)
 
-        # print(self.blockchain)
-        # print(block)
+        print(self.blockchain)
+        print(block)
 
         if block.previous_hash == self.blockchain.get_block_hash(-1):
-            # print('\n\nMYBLOCKWINS\n\n')
+            print('\n\nMYBLOCKWINS\n\n')
 
             block_transactions, _ = self.transaction_queue.split(self.capacity, assign=1)
             # allow miner to be recalled now that the transaction queue is up-to-date
@@ -502,7 +500,7 @@ class Node:
             self.blockchain.append_block(block)
 
         else:
-            # print('\n\nMYBLOCKLOST\n\n')
+            print('\n\nMYBLOCKLOST\n\n')
             # new blockchain/block received and miner was not killed in time
             # enable to recall, but transaction queue is new so dont meddle
             self.miner_pid = None
@@ -511,7 +509,7 @@ class Node:
         if len(self.transaction_queue) >= self.capacity:
             self.mine_block()
 
-        # print('\nCHECKMYMINEDBLOCK_EXIT')
+        print('\nCHECKMYMINEDBLOCK_EXIT')
 
         return block
 
@@ -522,7 +520,7 @@ class Node:
 
         * `block`: `Block` with proof-of-work.'''
 
-        # print('\nBROADCAST_BLOCK_ENTRY\n')
+        print('\nBROADCAST_BLOCK_ENTRY\n')
 
         broadcast_message = block.to_dict()
         pool = ThreadPool(self.nodes-1)
@@ -533,7 +531,7 @@ class Node:
         results = pool.map(self.send_dict_to_address, request_params_list)
         pool.close()
         pool.join()
-        # print('\nBROADCAST_BLOCK_EXIT\n')
+        print('\nBROADCAST_BLOCK_EXIT\n')
 
         return all(results)
 
@@ -551,28 +549,28 @@ class Node:
 
         * Whether `block` is valid.'''
 
-        # print('\nVALIDATE_PROOF_ENTRY\n')
+        print('\nVALIDATE_PROOF_ENTRY\n')
 
         if not block.validate_hash(self.difficulty):
-            # print('\nVALIDATE_PROOF_HASH_EXIT\n')
+            print('\nVALIDATE_PROOF_HASH_EXIT\n')
             return False
 
-        # print('\nVALID HASH\n')
+        print('\nVALID HASH\n')
         ring_bak_bak = object_dict_deepcopy(ring)
 
         try:
             for tra in block.list_of_transactions:
-                # print(str(tra))
+                print(str(tra))
                 if not self.validate_transaction(tra, ring):
                     raise ValueError
                 self.add_utxos(tra.transaction_outputs, ring)
         except ValueError:
-            # print('FAILED_PROOF_TRAN_EXIT')
+            print('FAILED_PROOF_TRAN_EXIT')
             for k in ring: # change values, not pointer
                 ring[k] = ring_bak_bak[k]
             return False
 
-        # print('\nVALIDATE_PROOF_SUC_EXIT\n')
+        print('\nVALIDATE_PROOF_SUC_EXIT\n')
         return True
 
     def valid_chain(self, blockchain):
@@ -587,12 +585,12 @@ class Node:
 
         * Whether `blockchain` is valid.'''
 
-        # print('\nVALIDATE_CHAIN_ENTRY\n')
+        print('\nVALIDATE_CHAIN_ENTRY\n')
 
-        # print(self.blockchain)
-        # print('\n\n')
-        # print(blockchain)
-        # print('\n\n')
+        print(self.blockchain)
+        print('\n\n')
+        print(blockchain)
+        print('\n\n')
 
         # check for the longer chain across all nodes
         new_ring = {k: Wallet.from_dict(self.ring[k].to_dict()) for k in self.ring}
@@ -603,16 +601,16 @@ class Node:
         self.add_utxos(genesis_tra.transaction_outputs, new_ring)
 
         for block in blockchain.chain[1:]:
-            # print('\nBLOCK\n')
-            # print(block)
+            print('\nBLOCK\n')
+            print(block)
             if not self.valid_proof(block, new_ring):
-                # print('\nVALIDATE_CHAIN_BLOCK_EXIT\n')
+                print('\nVALIDATE_CHAIN_BLOCK_EXIT\n')
                 return False
 
         self.ring = object_dict_deepcopy(new_ring)
         self.ring_bak = object_dict_deepcopy(new_ring)
 
-        # print('\nVALID_CHAIN__VALID_EXIT\n')
+        print('\nVALID_CHAIN__VALID_EXIT\n')
         return True
 
     def get_len_from_address(self, url: str):
@@ -626,7 +624,7 @@ class Node:
 
         * Blockchain length of node if valid, else 0.'''
 
-        # print('\nGET_LEN\n')
+        print('\nGET_LEN\n')
 
         http = urllib3.PoolManager()
         response = http.request('GET', url, headers={'Accept': 'application/json'})
@@ -645,7 +643,7 @@ class Node:
     def longest_blockchain_info(self):
         '''Get length and index of node with the longest blockchain.'''
 
-        # print('\nGET_LENSS\n')
+        print('\nGET_LENSS\n')
 
         pool = ThreadPool(self.nodes-1)
         urls = [
@@ -676,20 +674,20 @@ class Node:
 
         `transaction`: `dict` directly from `to_dict()` or `Transaction`.'''
 
-        # print('\nRECEIVE_TRANSACTION_ENTRY\n')
+        print('\nRECEIVE_TRANSACTION_ENTRY\n')
 
         if isinstance(transaction, dict):
             transaction = Transaction.from_dict(transaction)
 
         # if ring is incomplete and not bootstrap
         # append to unprocessed
-        if len(self.ring) == 1 and self.my_id != 0:
-            # print('\n\nUNPROCESSED_RECEIVE_TRA_EXIT\n\n')
+        if len(self.ring) < self.nodes and self.my_id != 0:
+            print('\n\nUNPROCESSED_RECEIVE_TRA_EXIT\n\n')
             self.unprocessed_transaction_queue.append(transaction)#, 678)
             return
 
         if not self.validate_transaction(transaction, self.ring):
-            # print('\nINVALID_TRANSACTION_RECEIVE_EXIT\n')
+            print('\nINVALID_TRANSACTION_RECEIVE_EXIT\n')
             return
         self.add_utxos(transaction.transaction_outputs, self.ring)
         self.transaction_queue.append(transaction)#, 685)
@@ -697,13 +695,13 @@ class Node:
         if len(self.transaction_queue) >= self.capacity:
             self.mine_block()
 
-        # print('\nRECEIVE_TRANSACTION_SUCCESS\n')
+        print('\nRECEIVE_TRANSACTION_SUCCESS\n')
 
     @wrapt.synchronized(TRANSACTION_LOCK)
     def process_transactions(self):
         '''Process transaction in the `unprocessed_transaction_queue`.'''
 
-        # print('\nPROCESS_UNPROCESSED_ENTRY\n')
+        print('\nPROCESS_UNPROCESSED_ENTRY\n')
 
         for tra in self.unprocessed_transaction_queue:
             if not self.validate_transaction(tra, self.ring):
@@ -717,13 +715,13 @@ class Node:
         if len(self.transaction_queue) >= self.capacity:
             self.mine_block()
 
-        # print('\nPROCESS_UNPROCESSED_EXIT\n')
+        print('\nPROCESS_UNPROCESSED_EXIT\n')
 
     def kill_miner(self):
         '''If miner is active, kill it (`SIGKILL`).'''
 
         if self.miner_pid is not None:
-            # print('Kill miner!')
+            print('Kill miner!')
             os.kill(self.miner_pid, signal.SIGKILL)
             self.miner_pid = None
 
@@ -732,12 +730,12 @@ class Node:
         new blockchain is indeed found, renew rings and keep
         transactions that'''
 
-        # print('\nRESOLVE_ENTRY\n')
+        print('\nRESOLVE_ENTRY\n')
 
         node_with_longest_chain, max_blockchain_len = self.longest_blockchain_info()
 
         if len(self.blockchain) >= max_blockchain_len:
-            # print('\nRESOLVE_NOT_LARGER_EXIT\n')
+            print('\nRESOLVE_NOT_LARGER_EXIT\n')
             return
 
         url = f'{self.ring[node_with_longest_chain].address}/blockchain'
@@ -749,7 +747,7 @@ class Node:
 
         # renews both rings
         if not self.valid_chain(blockchain):
-            # print('\nRESOLVE_NOT_VALID_CHAIN_EXIT\n')
+            print('\nRESOLVE_NOT_VALID_CHAIN_EXIT\n')
             return
 
         self.kill_miner()
@@ -771,7 +769,7 @@ class Node:
         # based on the ones we have already received
         self.process_transactions()
 
-        # print('\nRESOLVE_SUCCESSFUL_EXIT\n')
+        print('\nRESOLVE_SUCCESSFUL_EXIT\n')
 
     @wrapt.synchronized(BLOCK_LOCK)
     @wrapt.synchronized(TRANSACTION_LOCK)
@@ -783,24 +781,24 @@ class Node:
 
         * `block_dict`: `dict` directly from `to_dict()`.'''
 
-        # print('\nRECEIVEDBLOCK_ENTRY\n')
+        print('\nRECEIVEDBLOCK_ENTRY\n')
 
         block = Block.from_dict(block_dict)
         # NOTE: check capacity?
 
         if block.previous_hash in self.blockchain.hashes_set and \
             block.previous_hash != self.blockchain.get_block_hash(-1):
-            # print('\nRECEIVEDBLOCK_EXISTS_EXIT\n')
+            print('\nRECEIVEDBLOCK_EXISTS_EXIT\n')
             return
 
         if block.previous_hash != self.blockchain.get_block_hash(-1):
             self.resolve_conflicts()
-            # print('\nRECEIVEDBLOCK_RESOLVED_EXIT\n')
+            print('\nRECEIVEDBLOCK_RESOLVED_EXIT\n')
             return
 
         if self.valid_proof(block, self.ring_bak): # use bak to validate
             # if valid, ring_bak is updated
-            # print(f'Trying to kill miner {self.miner_pid}!')
+            print(f'Trying to kill miner {self.miner_pid}!')
             self.kill_miner()
             self.blockchain.append_block(block)
 
@@ -819,4 +817,4 @@ class Node:
                 self.validate_transaction(tra, self.ring)
                 self.add_utxos(tra.transaction_outputs, self.ring)
 
-        # print('\nRECEIVEDBLOCKFINALEXIT\n')
+        print('\nRECEIVEDBLOCKFINALEXIT\n')

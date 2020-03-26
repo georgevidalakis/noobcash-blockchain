@@ -89,7 +89,8 @@ CMD_NODE = 'python noobcash/rest.py' + \
            f' -a \'{BOOTSTRAP_URL}\''
 
 # suppress output of flask app
-with open(os.devnull, 'w') as fp:
+#with open(os.devnull, 'w') as fp:
+with open('log.txt', 'w') as fp:
     APP = subprocess.Popen(CMD_NODE, shell=True, stdout=fp, stderr=fp)
 time.sleep(3) # wait for app to launch
 
@@ -121,31 +122,37 @@ else:
 
 if ARGS.script is not None:
     print(nbc_cmd('\nStarting script\n'))
-    with open(ARGS.script, 'r') as transactions:
-        line = transactions.readline()
-        while line:
-            idx, amount = get_row(line)
 
-            if idx >= NODES:
-                line = transactions.readline()
-                continue
+    lines = open(ARGS.script).readlines()
+    rows = map(get_row, lines)
+    
+    timestamp = time.time()
 
-            transaction = {'receiver_idx': idx, 'amount': amount}
-            # print(nbc_cmd('Sending ') + str(amount) + \
-            #       nbc_cmd(f' NBC{"s" if amount > 1 else ""} to node ') + str(idx))
+    for row in rows:
+        idx, amount = row
 
-            try:
-                status = HTTP.request('POST', f'{URL}/black_hat_purchase',
-                                      headers={'Content-Type': 'application/json'},
-                                      body=json.dumps(transaction)).status
-            except Exception:
-                continue # avoid "Remote end closed connection without response"
+        # Uncomment next 2 lines to run given scripts with <5 / <10 nodes
+        #if idx >= NODES:
+        #    continue
 
-            if status != 200:
-                print(error('Error while executing script!'))
-                break
+        transaction = {'receiver_idx': idx, 'amount': amount}
+        # print(nbc_cmd('Sending ') + str(amount) + \
+        #       nbc_cmd(f' NBC{"s" if amount > 1 else ""} to node ') + str(idx))
 
-            line = transactions.readline()
+        try:
+            status = HTTP.request('POST', f'{URL}/black_hat_purchase',
+                                    headers={'Content-Type': 'application/json'},
+                                    body=json.dumps(transaction)).status
+        except Exception:
+            continue # avoid "Remote end closed connection without response"
+
+        if status != 200:
+            print(error('Error while executing script!'))
+            os.system(f'kill $(lsof -t -i:{PORT})')
+            break
+    
+    duration = time.time() - timestamp
+    print(f'Duration of transactions\' execution: {duration:.2f}sec.')
 
     try:
         if status == 200:
