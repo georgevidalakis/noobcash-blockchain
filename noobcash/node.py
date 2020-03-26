@@ -120,7 +120,7 @@ class Node:
 
         Returns:
 
-        * ([ascending] ID of node in the network, validated bootstrap's blockchain).'''
+        * ([ascending] ID of node in the network, [not validated] bootstrap's blockchain).'''
 
         # print('\nFIRST_CONTACT\n')
 
@@ -379,9 +379,11 @@ class Node:
 
         `transaction`: [Reconstructed from `dict`] `Transaction`.
 
+        * `ring`: ring of `Wallet`s the validation is based upon.
+
         Returns:
 
-        `True` if valid.'''
+        * `True` if valid.'''
 
         # print('\nVALIDATE_TRANSACTION_ENTRY\n')
 
@@ -606,9 +608,9 @@ class Node:
             if not self.valid_proof(block, new_ring):
                 # print('\nVALIDATE_CHAIN_BLOCK_EXIT\n')
                 return False
-        for k in self.ring:
-            self.ring_bak[k] = new_ring[k].deepcopy()
-            self.ring[k] = new_ring[k].deepcopy()
+
+        self.ring = object_dict_deepcopy(new_ring)
+        self.ring_bak = object_dict_deepcopy(new_ring)
 
         # print('\nVALID_CHAIN__VALID_EXIT\n')
         return True

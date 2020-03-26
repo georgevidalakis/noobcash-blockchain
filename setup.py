@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='noobcash',
-    version='beta',
+    version='v1.0',
     packages=find_packages(),
     scripts=[],
     url='https://github.com/georgevidalakis/noobcash-blockchain',
