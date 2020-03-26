@@ -175,7 +175,10 @@ def scripted_transaction():
         valid = False
         transaction = NODE.send_bogus_transaction(receiver_idx=receiver_idx, amount=amount)
 
-    NODE.broadcast_transaction(transaction)
+    try:
+        NODE.broadcast_transaction(transaction)
+    except:
+        pass
 
     return jsonify(valid), 200
 

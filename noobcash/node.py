@@ -278,7 +278,7 @@ class Node:
 
         return transaction
 
-    # @wrapt.synchronized(TRANSACTION_LOCK)
+    @wrapt.synchronized(TRANSACTION_LOCK)
     def create_transaction(self, receiver_idx: int, amount: int):
         '''Create transaction, update wallets and queue.
         NOTE: sender is this node, transaction is not broadcasted.
@@ -460,7 +460,10 @@ class Node:
 
             return
 
-        pid = os.fork()
+        try:
+            pid = os.fork()
+        except:
+            return
         if pid == 0: # child
             self.miner()
         else: # father
@@ -468,7 +471,7 @@ class Node:
         print('\nMINE_BLOCK_EXIT\n')
 
 
-    # @wrapt.synchronized(BLOCK_LOCK)
+    @wrapt.synchronized(BLOCK_LOCK)
     def check_my_mined_block(self, block_dict: dict):
         '''Check block returned from miner and its coherence
         with the current blockchain. Append if everything
@@ -671,7 +674,7 @@ class Node:
 
         return node_with_longest_chain, max_blockchain_len
 
-    # @wrapt.synchronized(TRANSACTION_LOCK)
+    @wrapt.synchronized(TRANSACTION_LOCK)
     def receive_transaction(self, transaction: Union[dict, Transaction]):
         '''Validate `transaction`, update `ring` and add to queue. Call
         miner if necessary and possible.
@@ -703,7 +706,7 @@ class Node:
 
         print('\nRECEIVE_TRANSACTION_SUCCESS\n')
 
-    # @wrapt.synchronized(TRANSACTION_LOCK)
+    @wrapt.synchronized(TRANSACTION_LOCK)
     def process_transactions(self):
         '''Process transaction in the `unprocessed_transaction_queue`.'''
 
@@ -740,7 +743,11 @@ class Node:
 
         node_with_longest_chain, max_blockchain_len = self.longest_blockchain_info()
 
-        if len(self.blockchain) >= max_blockchain_len:
+        if len(self.blockchain) > max_blockchain_len:
+            print('\nRESOLVE_NOT_LARGER_EXIT\n')
+            return
+        
+        if len(self.blockchain) == max_blockchain_len and self.my_id < node_with_longest_chain:
             print('\nRESOLVE_NOT_LARGER_EXIT\n')
             return
 
@@ -777,8 +784,8 @@ class Node:
 
         print('\nRESOLVE_SUCCESSFUL_EXIT\n')
 
-    # @wrapt.synchronized(BLOCK_LOCK)
-    # @wrapt.synchronized(TRANSACTION_LOCK)
+    @wrapt.synchronized(BLOCK_LOCK)
+    @wrapt.synchronized(TRANSACTION_LOCK)
     def receive_block(self, block_dict: dict):
         '''Check if block is redundant to handle, proper to append
         to the blockchain (and kill miner) or ask for new blockchain.

@@ -92,7 +92,7 @@ CMD_NODE = 'python noobcash/rest.py' + \
 #with open(os.devnull, 'w') as fp:
 with open('log.txt', 'w') as fp:
     APP = subprocess.Popen(CMD_NODE, shell=True, stdout=fp, stderr=fp)
-time.sleep(3) # wait for app to launch
+time.sleep(5) # wait for app to launch
 
 HTTP = urllib3.PoolManager()
 
@@ -107,7 +107,7 @@ if BOOTSTRAP:
     while not json.loads(HTTP.request('GET', f'{URL}/ring',
                                       headers={'Accept': 'application/json'}).data):
         print(WAIT_MSG)
-        time.sleep(3)
+        time.sleep(1.5)
     print(prompt(NET_MSG))
     MY_ID = 0
 else:
@@ -118,7 +118,7 @@ else:
             print(prompt(NET_MSG))
             break
         print(WAIT_MSG)
-        time.sleep(3)
+        time.sleep(1.5)
 
 if ARGS.script is not None:
     print(nbc_cmd('\nStarting script\n'))
@@ -127,9 +127,11 @@ if ARGS.script is not None:
     rows = map(get_row, lines)
     
     timestamp = time.time()
+    line_id = 0
 
     for row in rows:
         idx, amount = row
+        line_id += 1
 
         # Uncomment next 2 lines to run given scripts with <5 / <10 nodes
         #if idx >= NODES:
@@ -140,9 +142,11 @@ if ARGS.script is not None:
         #       nbc_cmd(f' NBC{"s" if amount > 1 else ""} to node ') + str(idx))
 
         try:
+            print(f'Line #{line_id} started.')
             status = HTTP.request('POST', f'{URL}/black_hat_purchase',
                                     headers={'Content-Type': 'application/json'},
                                     body=json.dumps(transaction)).status
+            print(f'Line #{line_id} ended.')
         except Exception:
             continue # avoid "Remote end closed connection without response"
 
