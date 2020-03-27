@@ -143,17 +143,21 @@ if ARGS.script is not None:
         print(nbc_cmd('Trx') +  str(line_id) + nbc_cmd(': Sending ') + str(amount) + \
               nbc_cmd(f' NBC coin{"s" if amount > 1 else ""} to node ') + str(idx))
 
-        try:
-            status = HTTP.request('POST', f'{URL}/black_hat_purchase',
-                                    headers={'Content-Type': 'application/json'},
-                                    body=json.dumps(transaction)).status
-        except Exception:
-            pass # avoid "Remote end closed connection without response"
+        while True:
+            try:
+                status = HTTP.request('POST', f'{URL}/black_hat_purchase',
+                                        headers={'Content-Type': 'application/json'},
+                                        body=json.dumps(transaction)).status
+            except Exception:
+                status = 200 # avoid "Remote end closed connection without response"
 
-        if status != 200:
-            print(error('Error while executing script!'))
-            os.system(f'kill $(lsof -t -i:{PORT})')
-            break
+            if status == 200:
+                break
+
+            print(error('Error while executing transaction!'))
+
+            # os.system(f'kill $(lsof -t -i:{PORT})')
+            # break
     
     duration = time.time() - timestamp
     print(f'Duration of transactions\' execution: {duration:.2f}sec.')
