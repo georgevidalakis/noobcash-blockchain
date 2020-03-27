@@ -1,12 +1,13 @@
 '''Script that defines API and runs app.'''
 
-import sys
+#import sys
+import time
 import json
 from flask import Flask, jsonify, request#, render_template
 
 from noobcash.node import Node
 from noobcash.helpers import pubk_to_key
-from noobcash.transaction import Transaction
+#from noobcash.transaction import Transaction
 #from flask_cors import CORS
 
 app = Flask(__name__)
@@ -45,19 +46,35 @@ def receive_transaction():
 @app.route('/mined_block', methods=['POST'])
 def handle_miner():
     '''Miner process sent a block.'''
+    global block_t0, block_tf
+
     block_dict = json.loads(request.data)
     block = NODE.check_my_mined_block(block_dict=block_dict)
     if block is not None:
+        if block_t0 == 0:
+            block_t0 = time.time()
+        block_tf = time.time()
         NODE.broadcast_block(block)
     return jsonify(None), 200
 
 @app.route('/block', methods=['POST'])
 def receive_block():
     '''Another node sent a block.'''
-    # print('\nREST /block\n')
+    global block_t0, block_tf
+
     block_dict = json.loads(request.data)
-    NODE.receive_block(block_dict=block_dict)
+    accepted = NODE.receive_block(block_dict=block_dict)
+    if accepted:
+        if block_t0 == 0:
+            block_t0 = time.time()
+        block_tf = time.time()
     return jsonify(None), 200
+
+@app.route('/block_time', methods=['GET'])
+def block_time():
+    '''Get total time for blocks.'''
+    global block_t0, block_tf
+    return jsonify(block_tf - block_t0), 200
 
 @app.route('/length', methods=['GET'])
 def send_blockchain_length():
@@ -229,6 +246,8 @@ if __name__ == '__main__':
 
     trxs_rec = 0
     wallet_broad = 0
+    block_t0 = 0
+    block_tf = 0
 
     # NOTE: init bootstrap before others
     NODE = Node(bootstrap_address=BOOTSTRAP_ADDRESS, capacity=CAPACITY, difficulty=DIFFICULTY,

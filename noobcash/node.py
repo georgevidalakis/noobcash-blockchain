@@ -745,11 +745,11 @@ class Node:
 
         if len(self.blockchain) > max_blockchain_len:
             print('\nRESOLVE_NOT_LARGER_EXIT\n')
-            return
+            return False
         
         if len(self.blockchain) == max_blockchain_len and self.my_id < node_with_longest_chain:
             print('\nRESOLVE_NOT_LARGER_EXIT\n')
-            return
+            return False
 
         url = f'{self.ring[node_with_longest_chain].address}/blockchain'
 
@@ -761,7 +761,7 @@ class Node:
         # renews both rings
         if not self.valid_chain(blockchain):
             print('\nRESOLVE_NOT_VALID_CHAIN_EXIT\n')
-            return
+            return False
 
         self.kill_miner()
 
@@ -784,6 +784,8 @@ class Node:
 
         print('\nRESOLVE_SUCCESSFUL_EXIT\n')
 
+        return True
+
     @wrapt.synchronized(BLOCK_LOCK)
     @wrapt.synchronized(TRANSACTION_LOCK)
     def receive_block(self, block_dict: dict):
@@ -802,12 +804,11 @@ class Node:
         if block.previous_hash in self.blockchain.hashes_set and \
             block.previous_hash != self.blockchain.get_block_hash(-1):
             print('\nRECEIVEDBLOCK_EXISTS_EXIT\n')
-            return
+            return False
 
         if block.previous_hash != self.blockchain.get_block_hash(-1):
-            self.resolve_conflicts()
             print('\nRECEIVEDBLOCK_RESOLVED_EXIT\n')
-            return
+            return self.resolve_conflicts()
 
         if self.valid_proof(block, self.ring_bak): # use bak to validate
             # if valid, ring_bak is updated
@@ -830,4 +831,8 @@ class Node:
                 self.validate_transaction(tra, self.ring)
                 self.add_utxos(tra.transaction_outputs, self.ring)
 
+            print('\nRECEIVEDBLOCKFINALEXIT\n')
+            return True
+
         print('\nRECEIVEDBLOCKFINALEXIT\n')
+        return False

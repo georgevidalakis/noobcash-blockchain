@@ -138,15 +138,13 @@ if ARGS.script is not None:
         #    continue
 
         transaction = {'receiver_idx': idx, 'amount': amount}
-        # print(nbc_cmd('Sending ') + str(amount) + \
-        #       nbc_cmd(f' NBC{"s" if amount > 1 else ""} to node ') + str(idx))
+        print(nbc_cmd('Sending ') + str(amount) + \
+              nbc_cmd(f' NBC coin{"s" if amount > 1 else ""} to node ') + str(idx))
 
         try:
-            print(f'Line #{line_id} started.')
             status = HTTP.request('POST', f'{URL}/black_hat_purchase',
                                     headers={'Content-Type': 'application/json'},
                                     body=json.dumps(transaction)).status
-            print(f'Line #{line_id} ended.')
         except Exception:
             continue # avoid "Remote end closed connection without response"
 
