@@ -138,7 +138,7 @@ if ARGS.script is not None:
         #    continue
 
         transaction = {'receiver_idx': idx, 'amount': amount}
-        print(nbc_cmd('Sending ') + str(amount) + \
+        print(nbc_cmd('Trx') +  str(line_id) + nbc_cmd(': Sending ') + str(amount) + \
               nbc_cmd(f' NBC coin{"s" if amount > 1 else ""} to node ') + str(idx))
 
         try:
@@ -146,7 +146,7 @@ if ARGS.script is not None:
                                     headers={'Content-Type': 'application/json'},
                                     body=json.dumps(transaction)).status
         except Exception:
-            continue # avoid "Remote end closed connection without response"
+            pass # avoid "Remote end closed connection without response"
 
         if status != 200:
             print(error('Error while executing script!'))
@@ -280,6 +280,16 @@ while True:
         print(', '.join([str(BALANCES[k]) if int(k) != MY_ID else highlight(BALANCES[k]) \
             for k in BALANCES]) + ' -> ' + str(sum(BALANCES.values())) + \
             nbc_cmd(' NBC coins'))
+
+    elif CMD == 'blocktimer':
+        BLOCKTIMER = json.loads(HTTP.request('GET', f'{URL}/block_timer',
+                                headers={'Accept': 'application/json'}).data)
+
+        print(f'{BLOCKTIMER:.2f} {nbc_cmd("seconds")}')
+
+    elif CMD == 'transactiontimer':
+
+        print(f'{duration:.2f} {nbc_cmd("seconds")}')
 
     elif CMD == 'help':
         print(nbc_cmd(HELP))

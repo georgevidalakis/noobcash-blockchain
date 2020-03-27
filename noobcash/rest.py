@@ -70,7 +70,7 @@ def receive_block():
         block_tf = time.time()
     return jsonify(None), 200
 
-@app.route('/block_time', methods=['GET'])
+@app.route('/block_timer', methods=['GET'])
 def block_time():
     '''Get total time for blocks.'''
     global block_t0, block_tf
