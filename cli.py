@@ -67,7 +67,7 @@ PARSER.add_argument('-n', '--nodes', default=5, type=int, help='number of nodes 
 PARSER.add_argument('-d', '--difficulty', default=3, type=int, help='difficulty of mining')
 PARSER.add_argument('-a', '--bootstrap_address', default='', type=str,
                     help='Bootstrap\'s ip+port')
-PARSER.add_argument('-s', '--script', type=str, help='filename of transactions to execute')
+PARSER.add_argument('-s', '--script', type=str, help='directory of transactions to execute')
 
 ARGS = PARSER.parse_args()
 
@@ -123,7 +123,9 @@ else:
 if ARGS.script is not None:
     print(nbc_cmd('\nStarting script\n'))
 
-    lines = open(ARGS.script).readlines()
+    SCRIPT = os.path.join(ARGS.script, f'{NODES}nodes', f'transactions{MY_ID}.txt')
+
+    lines = open(SCRIPT).readlines()
     rows = map(get_row, lines)
     
     timestamp = time.time()
@@ -184,7 +186,7 @@ optional arguments:
   -a BOOTSTRAP_ADDRESS, --bootstrap_address BOOTSTRAP_ADDRESS
                         Bootstrap's ip+port
   -s SCRIPT, --script SCRIPT
-                        filename of transactions to execute
+                        directory of transactions to execute
 
 While using the shell, use following commands:
   help                  show this help message
