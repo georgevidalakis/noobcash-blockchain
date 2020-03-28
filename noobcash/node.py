@@ -244,7 +244,7 @@ class Node:
         }
         self.ring_bak = object_dict_deepcopy(self.ring)
 
-        while not self.valid_chain(self.blockchain):
+        while self.valid_chain(self.blockchain) is None:
             self.my_id, self.blockchain = self.first_contact_data(self.bootstrap_address,
                                                                   self.my_wallet())
 
@@ -614,13 +614,10 @@ class Node:
             # print(block)
             if not self.valid_proof(block, new_ring):
                 print('\nVALIDATE_CHAIN_BLOCK_EXIT\n')
-                return False
-
-        self.ring = object_dict_deepcopy(new_ring)
-        self.ring_bak = object_dict_deepcopy(new_ring)
+                return None
 
         print('\nVALID_CHAIN__VALID_EXIT\n')
-        return True
+        return new_ring
 
     def get_len_from_address(self, url: str):
         '''Request `url` for length of its blockchain.
@@ -746,7 +743,7 @@ class Node:
         if len(self.blockchain) > max_blockchain_len:
             print('\nRESOLVE_NOT_LARGER_EXIT\n')
             return False
-        
+
         if len(self.blockchain) == max_blockchain_len and self.my_id < node_with_longest_chain:
             print('\nRESOLVE_NOT_LARGER_EXIT\n')
             return False
@@ -759,14 +756,28 @@ class Node:
         blockchain = Blockchain.from_dict(json.loads(response.data))
 
         # renews both rings
-        if not self.valid_chain(blockchain):
+        new_ring = self.valid_chain(blockchain)
+        if new_ring is None:
             print('\nRESOLVE_NOT_VALID_CHAIN_EXIT\n')
             return False
 
-        self.kill_miner()
-
         # keep transactions that have been sent to us
         # but do not exist in the received blockchain
+
+        self.renew_wallets_and_queues(new_ring, blockchain)
+
+        print('\nRESOLVE_SUCCESSFUL_EXIT\n')
+
+        return True
+
+    @wrapt.synchronized(TRANSACTION_LOCK)
+    def renew_wallets_and_queues(self, new_ring, blockchain):
+        '''Test'''
+
+        self.kill_miner()
+
+        self.ring_bak = object_dict_deepcopy(new_ring)
+        self.ring = object_dict_deepcopy(new_ring)
 
         transactions_dif = self.blockchain.set_of_transactions()\
             .union(OrderedSet(self.transaction_queue.transactions()))\
@@ -782,12 +793,7 @@ class Node:
         # based on the ones we have already received
         self.process_transactions()
 
-        print('\nRESOLVE_SUCCESSFUL_EXIT\n')
-
-        return True
-
     @wrapt.synchronized(BLOCK_LOCK)
-    @wrapt.synchronized(TRANSACTION_LOCK)
     def receive_block(self, block_dict: dict):
         '''Check if block is redundant to handle, proper to append
         to the blockchain (and kill miner) or ask for new blockchain.
@@ -813,26 +819,31 @@ class Node:
         if self.valid_proof(block, self.ring_bak): # use bak to validate
             # if valid, ring_bak is updated
             print(f'Trying to kill miner {self.miner_pid}!')
-            self.kill_miner()
-            self.blockchain.append_block(block)
-
             # logic: removed transactions of block from queue
             # & update ring wrt transactions never seen before
             # without adding them to the queue, while preserving
             # their order with OrderedSet
-            tra_queue_set = OrderedSet(self.transaction_queue.transactions())
-            rec_tra_set = OrderedSet(block.list_of_transactions)
 
-            self.transaction_queue.set(list(tra_queue_set - rec_tra_set))
-            unknown_tra = list(rec_tra_set - tra_queue_set)
-            for tra in unknown_tra:
-                # add to ring but do not append to queue
-                # they already in blockchain
-                self.validate_transaction(tra, self.ring)
-                self.add_utxos(tra.transaction_outputs, self.ring)
+            self.renew_wallets_and_queues_alt(block)
 
             print('\nRECEIVEDBLOCKFINALEXIT\n')
             return True
 
         print('\nRECEIVEDBLOCKFINALEXIT\n')
         return False
+
+    @wrapt.synchronized(TRANSACTION_LOCK)
+    def renew_wallets_and_queues_alt(self, block):
+        '''Test2'''
+        self.kill_miner()
+        self.blockchain.append_block(block)
+        tra_queue_set = OrderedSet(self.transaction_queue.transactions())
+        rec_tra_set = OrderedSet(block.list_of_transactions)
+
+        self.transaction_queue.set(list(tra_queue_set - rec_tra_set))
+        unknown_tra = list(rec_tra_set - tra_queue_set)
+        for tra in unknown_tra:
+            # add to ring but do not append to queue
+            # they already in blockchain
+            self.validate_transaction(tra, self.ring)
+            self.add_utxos(tra.transaction_outputs, self.ring)
