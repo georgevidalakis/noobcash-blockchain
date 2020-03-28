@@ -146,8 +146,8 @@ if ARGS.script is not None:
         while True:
             try:
                 status = HTTP.request('POST', f'{URL}/black_hat_purchase',
-                                        headers={'Content-Type': 'application/json'},
-                                        body=json.dumps(transaction)).status
+                                      headers={'Content-Type': 'application/json'},
+                                      body=json.dumps(transaction)).status
             except Exception:
                 status = 200 # avoid "Remote end closed connection without response"
 
@@ -156,11 +156,7 @@ if ARGS.script is not None:
 
             print(error('Error while executing transaction!'))
 
-            # os.system(f'kill $(lsof -t -i:{PORT})')
-            # break
-    
     duration = time.time() - timestamp
-    print(f'Duration of transactions\' execution: {duration:.2f}sec.')
 
     try:
         if status == 200:
@@ -170,7 +166,6 @@ if ARGS.script is not None:
         print(nbc_cmd('\nFinished script. It may take some time\
                 \nfor all nodes to complete their script\n'))
 
-# actual cli loop
 
 HELP = '''This is the NOOBCASH command line interface.
 
@@ -289,7 +284,7 @@ while True:
 
     elif CMD == 'blocktimer':
         BLOCKTIMER = json.loads(HTTP.request('GET', f'{URL}/block_timer',
-                                headers={'Accept': 'application/json'}).data)
+                                             headers={'Accept': 'application/json'}).data)
 
         print(f'{BLOCKTIMER:.2f} {nbc_cmd("seconds")}')
 
@@ -298,15 +293,18 @@ while True:
         print(f'{duration:.2f} {nbc_cmd("seconds")}')
 
     elif CMD == 'measurements':
-        print(f'{nbc_cmd("Transactions:")} {duration:.2f} {nbc_cmd("seconds")}')
+        try:
+            BLOCKTIMER = json.loads(HTTP.request('GET', f'{URL}/block_timer',
+                                                 headers={'Accept': 'application/json'}).data)
 
-        BLOCKTIMER = json.loads(HTTP.request('GET', f'{URL}/block_timer',
-                                headers={'Accept': 'application/json'}).data)
-
-        print(f'{nbc_cmd("Blocks:")} {BLOCKTIMER:.2f} {nbc_cmd("seconds")}')
-        BLOCKCHAIN = json.loads(HTTP.request('GET', f'{URL}/view_blockchain',
-                                        headers={'Accept': 'application/json'}).data)
-        print(f'{nbc_cmd("Blockchain length:")} {len(BLOCKCHAIN)} {nbc_cmd("blocks")}')
+            BLOCKCHAIN = json.loads(HTTP.request('GET', f'{URL}/view_blockchain',
+                                                 headers={'Accept': 'application/json'}).data)
+            print(f'{nbc_cmd("Transactions:")} {duration:.2f} {nbc_cmd("seconds")}')
+            print(f'{nbc_cmd("Blocks:")} {BLOCKTIMER:.2f} {nbc_cmd("seconds")}')
+            print(f'{nbc_cmd("Blockchain length:")} {len(BLOCKCHAIN)} {nbc_cmd("blocks")}')
+        except:
+            print(error(f'Professor Oak\'s voice echoed: \
+                "Now is\nnot the right time to use measurements."'))
 
     elif CMD == 'help':
         print(nbc_cmd(HELP))

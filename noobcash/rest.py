@@ -25,7 +25,6 @@ def first_contact():
 @app.route('/wallets', methods=['POST'])
 def get_wallets():
     '''Node:  Receive wallets from bootstrap.'''
-    # print('\nREST /wallets\n')
     wallet_dict = json.loads(request.data)
     NODE.receive_wallets(wallet_dict=wallet_dict)
     return jsonify(None), 200
@@ -36,10 +35,7 @@ def receive_transaction():
     global trxs_rec
 
     trxs_rec += 1
-    # print('\nREST /transaction\n')
     transaction_dict = json.loads(request.data)
-    # transaction_id = Transaction.from_dict(transaction_dict).transaction_id
-    # print(f'\nReceived transaction with id: {transaction_id}.\n')
     NODE.receive_transaction(transaction=transaction_dict)
     return jsonify(None), 200
 
@@ -98,6 +94,7 @@ def get_balances():
 @app.route('/view_blockchain', methods=['GET'])
 def view_blockchain():
     '''Return human readable blockchain'''
+
     blockchain_list = []
     for block in NODE.blockchain.chain:
         human_readable = dict()
@@ -129,6 +126,7 @@ def balance():
 def view_transactions():
     '''Return human readable format (`sender`, `receiver`, `amount`)
     of every transacion in the last block of the blockchain.'''
+
     last_block = NODE.blockchain.chain[-1]
     human_readable = dict()
     for transaction in last_block.list_of_transactions:
@@ -155,8 +153,11 @@ def broadcast_info():
     Returns:
 
     * `True` if all nodes registered, else `False`.'''
+
     global wallet_broad
 
+    # hax to deter retries from resending the wallets
+    # and the initial transactions. 42 is arbitrary
     if wallet_broad == 0 and NODE.nodes == len(NODE.ring):
         wallet_broad = 42
         NODE.broadcast_wallets()
@@ -170,6 +171,7 @@ def broadcast_info():
 @app.route('/purchase', methods=['POST'])
 def create_transaction():
     '''Create transaction ordered from cli.'''
+
     req_dict = json.loads(request.data)
     receiver_idx = req_dict['receiver_idx']
     amount = req_dict['amount']
@@ -182,6 +184,7 @@ def create_transaction():
 @app.route('/black_hat_purchase', methods=['POST'])
 def scripted_transaction():
     '''Create transaction ordered from script.'''
+
     req_dict = json.loads(request.data)
     receiver_idx = req_dict['receiver_idx']
     amount = req_dict['amount']
@@ -244,10 +247,11 @@ if __name__ == '__main__':
     DIFFICULTY = ARGS.difficulty
     BOOTSTRAP_ADDRESS = ARGS.bootstrap_address
 
-    trxs_rec = 0
-    wallet_broad = 0
-    block_t0 = 0
-    block_tf = 0
+    trxs_rec = 0 # record number of transactions to wait
+                 # for all initial transactions to arrive
+    wallet_broad = 0 # flag to avoid resending wallets
+    block_t0 = 0 # time when initial block is accepted
+    block_tf = 0 # time when last block is accepted
 
     # NOTE: init bootstrap before others
     NODE = Node(bootstrap_address=BOOTSTRAP_ADDRESS, capacity=CAPACITY, difficulty=DIFFICULTY,

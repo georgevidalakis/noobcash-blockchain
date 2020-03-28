@@ -140,7 +140,7 @@ class Block:
         Returns:
 
         * `int` number of transactions after insertion to
-        compare online with capacity.'''
+        compare online with capacity if need be.'''
 
         self.list_of_transactions.extend(transactions)
 

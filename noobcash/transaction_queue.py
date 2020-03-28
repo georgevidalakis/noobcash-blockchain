@@ -28,7 +28,7 @@ class TransactionQueue:
         self.queue = queue
 
     def __str__(self):
-        ''''''
+        '''Used for debugging.'''
         return str(self.queue)
 
     def __len__(self):
@@ -42,13 +42,7 @@ class TransactionQueue:
 
         * `transaction`: `Trsansaction` to be appended.'''
         self.queue.append(transaction)
-        # print(f'\nAppend to queue in line #{line}\n')
 
-        # for other_tra in self.queue[:-1]:
-        #     if other_tra.transaction_id == transaction.transaction_id:
-        #         print(f'\nDuplicate transaction created in line #{line}.\n')
-        #         print('\n'.join([str(tra) for tra in self.queue]))
-        #         break
 
     def extend(self, transactions):
         '''Extend `queue` with `transactions`.

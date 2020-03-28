@@ -33,14 +33,14 @@ class Wallet:
         if this_node:
             self.private_key = RSA.generate(2048)
             self.public_key = self.private_key.publickey() # n, e
-            # NOTE: added port into address
+            # get LOCAL ip
             hip = subprocess.check_output(["hostname", "-I"]).decode().split()[0]
             self.address = f'{hip}:{port}'
         self.utxos = dict() # key: transaction_id.hex_digest, value: utxo
         self.balance = 0 # Utxos and balance may be inconsistent (lock)
 
     @classmethod
-    def from_dict(cls, wallet: dict): # NOTE: added extra constructor
+    def from_dict(cls, wallet: dict):
         '''Constructor to be used when bootstrap node sends
         information about other nodes.
 
@@ -97,7 +97,7 @@ class Wallet:
         return self._get_necessary_utxos(amount)
 
 
-    def add_utxo(self, utxo: TransactionOutput): # NOTE: transfered from NodeInfo
+    def add_utxo(self, utxo: TransactionOutput):
         '''Add an unspent transaction to be added to wallet.
         Balance is also updated.
 
@@ -109,7 +109,7 @@ class Wallet:
         self.utxos[utxo.transaction_id] = utxo
         self.balance += utxo.amount
 
-    def remove_utxos(self, utxo_ids): # NOTE: no conflict with get_sufficient_utxos
+    def remove_utxos(self, utxo_ids):
         '''Remove unspent transactions in `utxo_ids`
         from wallet. Balance is also updated.
 
@@ -122,7 +122,7 @@ class Wallet:
             self.balance -= self.utxos[utxo_id].amount
             del self.utxos[utxo_id]
 
-    def filtered_sum(self, utxo_ids): # NOTE: transfered from NodeInfo
+    def filtered_sum(self, utxo_ids):
         '''Compute sum of designated unspent transactions.
 
         Arguments:

@@ -11,15 +11,15 @@ class Blockchain:
     '''List of validated blocks with Proof-of-Work.
     Contains list of `Block` objects `chain`.'''
 
-
+    # note that the init is only actually used when bootstrap
+    # initializes its blockchain
     def __init__(self, genesis_transaction=None):
         '''Initialize `Blockchain` object.
 
         Arguments:
 
-        * `genesis_transaction`: Genesis `Transaction`. Is used
-        when `received_blockchain` is not set, i.e. bootstrap
-        initializes its blockchain. Default: `None`.'''
+        * `genesis_transaction`: Genesis `Transaction`. Is used bootstrap
+        initialize its blockchain. Default: `None`.'''
 
         self.chain = []
         self.hashes_set = set()
@@ -92,8 +92,8 @@ class Blockchain:
 
         transactions_set = OrderedSet()
 
-        for b in self.chain:
-            transactions_set.update(b.list_of_transactions)
+        for blck in self.chain:
+            transactions_set.update(blck.list_of_transactions)
 
         return transactions_set
 

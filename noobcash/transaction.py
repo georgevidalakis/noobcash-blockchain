@@ -110,8 +110,8 @@ class Transaction:
 
         Returns:
 
-        * `str` that somehow contains transaction's keys,
-        value and input unspend transactions.'''
+        * `str` that somehow contains transaction's keys
+        and input unspent transactions.'''
 
         return json.dumps(dict(
             sender_pubk=pubk_to_dict(self.sender_pubk),
@@ -131,6 +131,7 @@ class Transaction:
         Returns:
 
         * Hash as SHA object or `str`'''
+
         _hash = SHA.new(data=self.message().encode('utf-8'))
         if as_str:
             _hash = _hash.hexdigest()
