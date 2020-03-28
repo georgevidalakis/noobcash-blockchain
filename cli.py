@@ -297,6 +297,17 @@ while True:
 
         print(f'{duration:.2f} {nbc_cmd("seconds")}')
 
+    elif CMD == 'measurements':
+        print(f'{nbc_cmd("Transactions:")} {duration:.2f} {nbc_cmd("seconds")}')
+
+        BLOCKTIMER = json.loads(HTTP.request('GET', f'{URL}/block_timer',
+                                headers={'Accept': 'application/json'}).data)
+
+        print(f'{nbc_cmd("Blocks:")} {BLOCKTIMER:.2f} {nbc_cmd("seconds")}')
+        BLOCKCHAIN = json.loads(HTTP.request('GET', f'{URL}/view_blockchain',
+                                        headers={'Accept': 'application/json'}).data)
+        print(f'{nbc_cmd("Blockchain length:")} {len(BLOCKCHAIN)} {nbc_cmd("blocks")}')
+
     elif CMD == 'help':
         print(nbc_cmd(HELP))
 
