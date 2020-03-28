@@ -89,8 +89,8 @@ CMD_NODE = 'python noobcash/rest.py' + \
            f' -a \'{BOOTSTRAP_URL}\''
 
 # suppress output of flask app
-#with open(os.devnull, 'w') as fp:
-with open('log.txt', 'w') as fp:
+with open(os.devnull, 'w') as fp:
+    print('Starting flask app...')
     APP = subprocess.Popen(CMD_NODE, shell=True, stdout=fp, stderr=fp)
 time.sleep(5) # wait for app to launch
 
