@@ -19,8 +19,7 @@ from noobcash.wallet import Wallet
 from noobcash.transaction import Transaction
 from noobcash.blockchain import Blockchain
 from noobcash.helpers import (
-    pubk_to_key, object_dict_deepcopy, get_len_from_address,
-    first_contact_data, send_dict_to_address, generate_wallet
+    pubk_to_key, object_dict_deepcopy, get_len_from_address, send_dict_to_address
 )
 from noobcash.transaction_queue import TransactionQueue
 
@@ -197,9 +196,15 @@ class Node:
         }
         self.ring_bak = object_dict_deepcopy(self.ring)
 
-        while self.valid_chain(self.blockchain) is None:
-            self.my_id, self.blockchain = first_contact_data(self.bootstrap_address,
-                                                             self.my_wallet())
+        while True:
+            new_ring = self.valid_chain(self.blockchain)
+            if new_ring is not None:
+                self.ring = object_dict_deepcopy(new_ring)
+                self.ring_bak = object_dict_deepcopy(new_ring)
+                break
+            else:
+                self.my_id, self.blockchain = first_contact_data(self.bootstrap_address,
+                                                                 self.my_wallet())
 
         # process transactions received before wallets
         self.process_transactions()
@@ -692,3 +697,45 @@ class Node:
             # they already in blockchain
             self.validate_transaction(tra, self.ring)
             self.add_utxos(tra.transaction_outputs, self.ring)
+
+def first_contact_data(bootstrap_address: str, wallet: Wallet):
+    '''Contact bootstrap to register into the network
+    and handle the data in the response. MUST send wallet
+    information and get index and current blockchain.
+
+    Arguments:
+
+    * `bootstrap_address`: ip+port of bootstrap (assumed
+    to be known from the start).
+
+    * `wallet`: the node's `Wallet` (not set yet into `ring`),
+
+    Returns:
+
+    * ([ascending] ID of node in the network, [not validated] bootstrap's blockchain).'''
+
+    myinfo = wallet.to_dict()
+
+    http = urllib3.PoolManager()
+
+    # we are contacting the bootstrap
+    # loop until we get proper chain
+    response = json.loads(http.request('POST', f'{bootstrap_address}/node',
+                                       headers={'Content-Type': 'application/json'},
+                                       body=json.dumps(myinfo)).data)
+
+    # blockchain in response is (ordered) list of blocks
+    return response['id'], Blockchain.from_dict(response['blockchain'])
+
+def generate_wallet(port: int):
+    '''Generate node's wallet.
+
+    Arguments:
+
+    * `port`: integer port where node is listening.
+
+    Returns:
+
+    * `Wallet`.'''
+
+    return Wallet(port=port, this_node=True)

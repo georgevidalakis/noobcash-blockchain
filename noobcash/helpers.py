@@ -4,9 +4,6 @@ import json
 import urllib3
 from Crypto.PublicKey import RSA
 
-from noobcash.blockchain import Blockchain
-from noobcash.wallet import Wallet
-
 def pubk_to_dict(pubk):
     '''Transform RSA public key to a dictionary
     so it can be recovered afterwards.
@@ -95,7 +92,6 @@ def object_dict_deepcopy(dct):
         new_dct[k] = dct[k].deepcopy()
     return new_dct
 
-
 def get_len_from_address(url: str):
     '''Request `url` for length of its blockchain.
 
@@ -121,35 +117,6 @@ def get_len_from_address(url: str):
 
     return blockchain_len
 
-def first_contact_data(bootstrap_address: str, wallet: Wallet):
-    '''Contact bootstrap to register into the network
-    and handle the data in the response. MUST send wallet
-    information and get index and current blockchain.
-
-    Arguments:
-
-    * `bootstrap_address`: ip+port of bootstrap (assumed
-    to be known from the start).
-
-    * `wallet`: the node's `Wallet` (not set yet into `ring`),
-
-    Returns:
-
-    * ([ascending] ID of node in the network, [not validated] bootstrap's blockchain).'''
-
-    myinfo = wallet.to_dict()
-
-    http = urllib3.PoolManager()
-
-    # we are contacting the bootstrap
-    # loop until we get proper chain
-    response = json.loads(http.request('POST', f'{bootstrap_address}/node',
-                                       headers={'Content-Type': 'application/json'},
-                                       body=json.dumps(myinfo)).data)
-
-    # blockchain in response is (ordered) list of blocks
-    return response['id'], Blockchain.from_dict(response['blockchain'])
-
 def send_dict_to_address(request_params):
     '''Send specified dict to an address.
 
@@ -169,16 +136,3 @@ def send_dict_to_address(request_params):
                             body=json.dumps(dict_to_broadcast))
 
     return response.status == 200
-
-def generate_wallet(port: int):
-    '''Generate node's wallet.
-
-    Arguments:
-
-    * `port`: integer port where node is listening.
-
-    Returns:
-
-    * `Wallet`.'''
-
-    return Wallet(port=port, this_node=True)

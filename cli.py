@@ -303,8 +303,7 @@ while True:
             print(f'{nbc_cmd("Blocks:")} {BLOCKTIMER:.2f} {nbc_cmd("seconds")}')
             print(f'{nbc_cmd("Blockchain length:")} {len(BLOCKCHAIN)} {nbc_cmd("blocks")}')
         except:
-            print(error(f'Professor Oak\'s voice echoed: \
-                "Now is\nnot the right time to use measurements."'))
+            print(error(f'Professor Oak\'s voice echoed: "Now is not the right time to use {CMD}."'))
 
     elif CMD == 'help':
         print(nbc_cmd(HELP))
